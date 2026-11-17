@@ -15,7 +15,7 @@ export async function prepareImportedFont(staged: string, licensePath: string | 
   let license: { path: string; sha256: string } | undefined;
   if (licensePath) {
     if (!path.isAbsolute(licensePath)) throw new Error('FONT_LICENSE_NOT_READABLE: absolute path required');
-    const handle = await open(licensePath, constants.O_RDONLY | constants.O_NOFOLLOW);
+    const handle = await open(licensePath, constants.O_RDONLY | constants.O_NOFOLLOW | (constants.O_NONBLOCK ?? 0));
     let bytes: Buffer;
     try {
       const info = await handle.stat();
