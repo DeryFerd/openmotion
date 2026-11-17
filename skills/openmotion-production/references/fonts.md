@@ -29,7 +29,7 @@ node --experimental-strip-types <runtime>/scripts/font-specimen.ts <request.json
 
 Source installations resolve the parser from their installed dependencies. For an extracted plugin whose dependencies live separately, append `--runtime-root <existing-locked-runtime>`: the directory containing the `node_modules` used by `hyperframesCli` in project details. This selects an already installed parser; it does not install dependencies or acquire fonts.
 
-Supply JSON in this shape, replacing the example copy, dimensions, roles and candidates with this task's inputs. `sourcePath` is a selected `files[].sourcePath` from preparation; `licensePath` is the same preparation's returned path. All resource paths must be absolute. Prepare each candidate at the role's weight first.
+Supply JSON in this shape, replacing the example copy, dimensions, roles and candidates with this task's inputs. `sourcePath` is a selected `files[].sourcePath` from preparation; `licensePath` is the same preparation's returned path and must sit in the same directory as the font file, because import rejects a licence from another folder with `FONT_LICENSE_NOT_BESIDE_FONT`. All resource paths must be absolute. Prepare each candidate at the role's weight first.
 
 ```json
 {

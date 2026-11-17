@@ -24,6 +24,13 @@ test('font import retains the actual face and license, rejects corrupt fonts, de
   const directory = store.projectDirectoryFor(original.projectId);
   assert.deepEqual(await readFile(path.join(directory, font.path)), await readFile(sourcePath));
   assert.equal(await readFile(path.join(directory, font.license.path), 'utf8'), await readFile(licensePath, 'utf8'));
+  // A licence from outside the font's directory would make the argument a bounded file copy.
+  const strayLicense = path.join(store.directory, 'OFL.txt');
+  await writeFile(strayLicense, await readFile(licensePath));
+  const stray = await service.call('openmotion_import_assets', { projectId: original.projectId, requestId: 'stray-license',
+    items: [{ itemId: 'orbitron-stray', sourcePath, licensePath: strayLicense }] });
+  assert.equal(stray.items[0].status, 'failed');
+  assert.match(stray.items[0].error, /FONT_LICENSE_NOT_BESIDE_FONT/);
   const dedupe = await service.call('openmotion_import_assets', { ...args, requestId: 'font-again', items: [args.items[0]] });
   assert.equal(dedupe.items[0].assetId, font.assetId); assert.equal(dedupe.items[0].reused, true);
   const before = await service.call('openmotion_get_project', { projectId: original.projectId });

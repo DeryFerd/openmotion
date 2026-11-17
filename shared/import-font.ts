@@ -7,7 +7,7 @@ import { loadFontParser, prepareFont, readFontFile } from './studio-fonts.ts';
 export const isFontFilePath = (filename: string) => /\.(?:ttf|otf|ttc|woff2?)$/i.test(filename);
 
 /** Prepare font bytes and optional license in staging; the caller owns the project transaction. */
-export async function prepareImportedFont(staged: string, licensePath: string | undefined, assetId: string, staging: string, runtimeRoot: string) {
+export async function prepareImportedFont(staged: string, licensePath: string | undefined, assetId: string, staging: string, runtimeRoot: string, fontPath?: string) {
   const { data, format, ...font } = prepareFont(await readFontFile(staged), loadFontParser(runtimeRoot));
   await writeFile(staged, data);
   const relative = `assets/fonts/${assetId}.${format}`;
@@ -15,6 +15,10 @@ export async function prepareImportedFont(staged: string, licensePath: string | 
   let license: { path: string; sha256: string } | undefined;
   if (licensePath) {
     if (!path.isAbsolute(licensePath)) throw new Error('FONT_LICENSE_NOT_READABLE: absolute path required');
+    // A licence belongs to the font file the user selected. Requiring the same directory stops this
+    // argument from copying an unrelated readable file (keys, .env) into the project.
+    if (fontPath && path.dirname(path.resolve(licensePath)) !== path.dirname(path.resolve(fontPath)))
+      throw new Error('FONT_LICENSE_NOT_BESIDE_FONT: place the licence next to the font file');
     const handle = await open(licensePath, constants.O_RDONLY | constants.O_NOFOLLOW);
     let bytes: Buffer;
     try {
