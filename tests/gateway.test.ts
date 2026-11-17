@@ -8,7 +8,7 @@ import { fixture } from './fixtures.ts';
 import { transport } from './http.ts';
 import { ModelGateway, gatewayFor } from '../gateway/service.ts';
 import { classifyModel, discoverModels, normalizeModels } from '../gateway/catalog.ts';
-import { downloadMedia, mediaType, type Fetcher } from '../gateway/network.ts';
+import { apiJson, downloadMedia, mediaType, type Fetcher } from '../gateway/network.ts';
 import { callTool } from '../mcp.ts';
 import { createTracker, validProperties, type PendingEvent } from '../tracking/core.ts';
 import { omEvents, studioEvents } from '../tracking/events.ts';
@@ -284,6 +284,24 @@ test('catalogue discovery classifies output rather than input and follows public
     return { models: [{ endpoint_id: 'fal-ai/video', metadata: { category: 'image-to-video' } }] };
   }));
   assert.equal(pages, 2); assert.deepEqual(models.map(m => m.modality), ['image', 'video']);
+});
+
+test('provider JSON stops reading at the response size cap', async () => {
+  let pulled = 0, cancelled = false;
+  const chunk = new Uint8Array(1024 * 1024).fill(120);
+  const stream = new ReadableStream<Uint8Array>({
+    pull(controller) { pulled += chunk.length; controller.enqueue(chunk); },
+    cancel() { cancelled = true; },
+  });
+  const oversized: Fetcher = async () => new Response(stream, { status: 200 });
+  await assert.rejects(apiJson(oversized, 'https://example.com/v1/models'), /exceeds 16 MB/);
+  // A buffering implementation would drain the body; this one stops a chunk past the cap and cancels.
+  assert.ok(pulled <= 18 * 1024 * 1024, `pulled ${pulled} bytes before rejecting`);
+  assert.ok(cancelled, 'the reader is cancelled once the cap is passed');
+  const small: Fetcher = async () => new Response(JSON.stringify({ ok: true }), { status: 200 });
+  assert.deepEqual(await apiJson(small, 'https://example.com/v1/models'), { ok: true });
+  const bom: Fetcher = async () => new Response(new Uint8Array([0xef, 0xbb, 0xbf, ...Buffer.from('{"ok":true}')]), { status: 200 });
+  assert.deepEqual(await apiJson(bom, 'https://example.com/v1/models'), { ok: true });
 });
 
 test('media import rejects non-public URLs, unexpected file signatures and wrong output modalities', async () => {
