@@ -314,6 +314,12 @@ async function legacyCreation(store: WorkspaceStore, context: Service, origin: s
   return createArtifact(store, context, origin, session, data);
 }
 
+// These GET routes start server-side work (CLI refresh, catalogue refresh, export recovery,
+// captured brand covers), so they follow the same caller rule as the mutating verbs below.
+// /api/models forwards refresh=true into provider discovery, which reads stored keys and rewrites caches.
+const sideEffectingGet = [/^\/api\/settings\/account$/, /^\/api\/models$/, /^\/api\/models\/capabilities$/, /^\/api\/project\/status$/,
+  /^\/api\/brand-kits\/(?:catalog\/)?[^/]+\/(?:cover|favicon)$/];
+
 export async function handler(req: IncomingMessage, res: ServerResponse, store = sharedStore, context = service) {
   res.setHeader('X-Content-Type-Options', 'nosniff'); res.setHeader('Cache-Control', 'no-store');
   try {
@@ -346,6 +352,8 @@ export async function handler(req: IncomingMessage, res: ServerResponse, store =
       }
     }
     if (motionRequest) url.pathname = url.pathname.replace(/^\/(?:motion|design)-api\//, '/api/');
+    if ((req.method === 'GET' || req.method === 'HEAD') && req.headers['sec-fetch-site'] === 'cross-site'
+      && sideEffectingGet.some(pattern => pattern.test(url.pathname))) return json(res, 403, { error: '仅允许当前预览页面读取' });
     if (motionRequest && url.pathname.startsWith('/api/assets/conversations')) {
       const chats = assetConversations(store);
       if (url.pathname === '/api/assets/conversations') {
