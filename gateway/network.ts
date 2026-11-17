@@ -37,28 +37,41 @@ export async function apiJson(fetcher: Fetcher, url: string, init: RequestInit =
   if (body.length > 16 * 1024 * 1024) throw new Error('Provider response exceeds 16 MB');
   try { return JSON.parse(body); } catch { throw new Error('Provider returned invalid JSON'); }
 }
-function publicAddress(address: string) {
+export function isPublicAddress(address: string) {
   if (isIP(address) === 4) {
-    const [a, b] = address.split('.').map(Number);
-    return a !== 0 && a !== 10 && a !== 127 && a < 224 && !(a === 169 && b === 254)
-      && !(a === 172 && b >= 16 && b <= 31) && !(a === 192 && b === 168) && !(a === 100 && b >= 64 && b <= 127);
+    const [a, b, c] = address.split('.').map(Number);
+    // Only 192.0.0.0/24 and 192.0.2.0/24 are special use; the rest of 192.0/16 is routable.
+    return a > 0 && a < 224 && ![10, 127].includes(a) && !(a === 169 && b === 254) && !(a === 172 && b >= 16 && b <= 31)
+      && !(a === 192 && b === 0 && (c === 0 || c === 2)) && !(a === 192 && b === 168)
+      && !(a === 100 && b >= 64 && b <= 127) && !(a === 198 && [18, 19].includes(b));
   }
-  // Global unicast only; disallow IPv4-mapped, loopback and link-local addresses.
-  return isIP(address) === 6 && /^[23][0-9a-f]{3}:/i.test(address);
+  return isGlobalUnicastV6(address);
+}
+// Numeric prefix check, because URL canonicalises compressed forms: 2001::1 is Teredo even
+// though its second hextet is not spelled out.
+function isGlobalUnicastV6(address: string) {
+  if (isIP(address) !== 6) return false;
+  const head = address.includes('::') ? address.slice(0, address.indexOf('::')) : address;
+  const hextets = head.split(':');
+  const first = parseInt(hextets[0] || '0', 16), second = parseInt(hextets[1] || '0', 16);
+  if (!Number.isFinite(first) || !Number.isFinite(second)) return false;
+  if (first < 0x2000 || first > 0x3fff) return false;
+  if (first === 0x2001 && (second === 0x0000 || second === 0x0db8)) return false;
+  return first !== 0x2002;
 }
 export function providerOrigin(raw: unknown): string {
   if (typeof raw !== 'string' || raw.length > 2048) throw new Error('A public HTTPS API origin is required');
   const url = new URL(raw);
   if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash || !['', '/', '/v1', '/v1/'].includes(url.pathname)
     || url.port && url.port !== '443' || url.hostname === 'localhost' || url.hostname.endsWith('.localhost')
-    || isIP(url.hostname.replace(/^\[|\]$/g, '')) && !publicAddress(url.hostname.replace(/^\[|\]$/g, ''))) throw new Error('Use the public HTTPS gateway origin from the API key page');
+    || isIP(url.hostname.replace(/^\[|\]$/g, '')) && !isPublicAddress(url.hostname.replace(/^\[|\]$/g, ''))) throw new Error('Use the public HTTPS gateway origin from the API key page');
   return url.origin;
 }
 /** Custom Cloud origins use pinned public DNS and never forward credentials on redirects. */
 export async function publicProviderFetch(raw: Parameters<Fetcher>[0], init: RequestInit = {}, idleTimeoutMs = 60_000): Promise<Response> {
   const url = new URL(String(raw)); providerOrigin(url.origin);
   const addresses = await lookup(url.hostname, { all: true });
-  if (!addresses.length || addresses.some(item => !publicAddress(item.address))) throw new Error('Provider points to a non-public address');
+  if (!addresses.length || addresses.some(item => !isPublicAddress(item.address))) throw new Error('Provider points to a non-public address');
   return new Promise<Response>((resolve, reject) => {
     const req = https.request(url, { method: init.method ?? 'GET', headers: Object.fromEntries(new Headers(init.headers)), signal: init.signal ?? undefined,
       lookup: (_host, options, done) => {
@@ -90,7 +103,7 @@ export async function downloadMedia(raw: string, signal: AbortSignal, redirects 
   if (url.protocol !== 'https:' || url.username || url.password || (url.port && url.port !== '443')) throw new Error('Generated media must use public HTTPS');
   const hostname = url.hostname.replace(/^\[|\]$/g, '');
   const addresses = await lookup(hostname, { all: true });
-  if (!addresses.length || addresses.some(item => !publicAddress(item.address))) throw new Error('Generated media points to a non-public address');
+  if (!addresses.length || addresses.some(item => !isPublicAddress(item.address))) throw new Error('Generated media points to a non-public address');
   return new Promise<Buffer>((resolve, reject) => {
     const req = https.get(url, { signal, lookup: (_host, options, done) => {
       if ((options as { all?: boolean }).all) (done as Function)(null, addresses);
