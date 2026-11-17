@@ -132,7 +132,10 @@ test('release packaging rejects floating npm versions, lock drift, unpinned nati
 test('test npm artifacts contain their application, locked manifest and no bundled native runtime', { timeout: 60_000 }, async () => {
   const directory = await mkdtemp(path.join(tmpdir(), 'motion-npm-pack-'));
   const before = await readFile('package.json', 'utf8');
-  const unapproved = ['docs/private-sentinel.md', 'scripts/private-sentinel.mjs', 'private-sentinel.ts'];
+  // Sentinels must be names that cannot exist in a contributor checkout: the suite writes
+// them and deletes them again, so reusing a real local-only file name would destroy it.
+  const unapproved = ['docs/private-sentinel.md', 'scripts/private-sentinel.mjs', 'private-sentinel.ts',
+    'AGENTS_PR_RULE.local-sentinel.md', 'PR_SKILLS.local-sentinel.md', 'PRE-PR.local-sentinel.md', '.env.private-sentinel'];
   for (const file of unapproved) await writeFile(file, 'must not ship');
   try {
     const version = '0.6.4-test.42812345678.1', output = path.join(directory, 'build');
@@ -238,6 +241,13 @@ test('test npm artifacts contain their application, locked manifest and no bundl
     for (const file of ['shared/provider-registry.ts', 'gateway/connections.ts', 'gateway/media-use.ts', 'gateway/opendesign.ts', 'skills/openmotion-media/references/providers/fal.md', 'skills/openmotion-media/references/providers/opendesign.md', 'skills/openmotion-media/references/providers/atlascloud.md', 'skills/openmotion-media/references/providers/wavespeed.md']) assert(entries.includes(file), 'BYOK runtime and guidance must ship: ' + file);
     assert(!entries.includes('skills/openmotion-debug-media/'), 'Removed debugging Skill must not ship');
     for (const file of unapproved) assert(!entries.includes(file), 'Unapproved file shipped: ' + file);
+    // Agent support material and credentials stay in the developer checkout, including
+    // directories that a local audit may create and that must never reach the payload.
+    for (const local of ['AGENTS_PR_RULE.md', 'PR_SKILLS.md', 'PRE-PR.md', 'codex-security/', 'superpowers/', 'humanizer/', 'AUDIT_PR/']) {
+      assert(!entries.split('\n').some(file => file === local || file.startsWith(local)), 'Local agent support must not ship: ' + local);
+    }
+    assert(!entries.split('\n').some(file => path.basename(file).startsWith('.env')), 'Environment files must not ship');
+    assert(!entries.split('\n').some(file => file.startsWith('.motion-data')), 'Workspace data must not ship');
     assert(!/\/(tests|src)\//.test(entries), 'Development sources and fixtures must not ship');
     for (const script of ['measure_frame.mjs', 'register_motion.py', 'measure_motion.py', 'observe_marks.py', 'vision-tools.mjs']) {
       const filename = 'skills/openmotion-recreate/scripts/' + script;
