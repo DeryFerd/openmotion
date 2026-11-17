@@ -1,5 +1,6 @@
 import { crc32, inflateRawSync } from 'node:zlib';
 import { PROJECT_ARCHIVE_LIMITS as limits } from './project-archive.ts';
+import { unsafePortableSegment } from './project-name.ts';
 
 /** Inspect central and local records before accepting bytes; never extract paths with a shell. */
 export function readProjectZip(data: Buffer): Map<string, Buffer> {
@@ -25,7 +26,7 @@ export function readProjectZip(data: Buffer): Map<string, Buffer> {
     const rawName = data.subarray(offset + 46, offset + 46 + nameLength);
     const name = new TextDecoder('utf-8', { fatal: true }).decode(rawName);
     const clean = name.endsWith('/') ? name.slice(0, -1) : name;
-    if (!clean || clean.length > 400 || /[\\:\x00-\x1f\x7f]/.test(clean) || clean.split('/').some(p => !p || p === '.' || p === '..' || /[. ]$/.test(p) || /^(con|prn|aux|nul|com[1-9]|lpt[1-9])(\.|$)/i.test(p))) return fail();
+    if (!clean || clean.length > 400 || /[\\:\x00-\x1f\x7f]/.test(clean) || clean.split('/').some(p => !p || p === '.' || p === '..' || unsafePortableSegment(p))) return fail();
     const key = clean.normalize('NFC').toLowerCase();
     if (names.has(key)) return fail(); names.add(key);
     if (data.readUInt32LE(local) !== 0x04034b50 || data.readUInt16LE(local + 6) !== flags || data.readUInt16LE(local + 8) !== method) return fail();

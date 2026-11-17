@@ -19,6 +19,7 @@ import type { Project as LegacyProject } from './shared/legacy.ts';
 import { exportExpectation } from './shared/export-expectation.ts';
 import type { ExportExpectation } from './shared/export-spec.ts';
 import { validateInstruction, type ProjectConversation, type ProjectMessage } from './shared/conversation.ts';
+import { firstFoldedDuplicate, foldsProjectNames, portableNameProblem } from './shared/project-name.ts';
 import { creationMode, type CreativeSession, type SessionDetail } from './shared/session.ts';
 import { templateConfig } from './shared/template-config.ts';
 import { copyTemplate, welcomeTemplateId } from './template-library.ts';
@@ -42,6 +43,12 @@ export type ExportJob = { id: string; projectId?: string; versionId?: string; re
   createdAt: number; acceptedAt?: number; deadlineAt?: number; terminalAt?: number; observedOutcome?: 'success' | 'failure' | 'unknown' | 'cancelled'; expiresAt: number; token?: string; workerPid?: number; file?: string; outputName?: string; error?: string; expected?: ExportExpectation };
 export class Conflict extends Error { constructor() { super('工程已经被 Studio 或 Agent 更新，请重新读取 revision 后再修改。'); } }
 
+// Portable names are rejected on every platform so a Linux-authored project cannot produce an
+// archive that import refuses; case/NFC folding only applies where the filesystem ignores case.
+// The rule itself lives in shared/project-name.ts, which the ZIP reader also uses.
+function assertWritableName(name: string) {
+  if (portableNameProblem(name) !== null) throw new Error('工程文件路径无效:' + name);
+}
 export function projectPath(name: string, includeDependencies = false): string {
   if (studioManifests.includes(name)) return name;
   if (typeof name !== 'string' || !name || name.length > 240 || name.includes('\\') || name.includes(':') || /[\x00-\x1f]/.test(name)
@@ -447,19 +454,21 @@ export class WorkspaceStore {
   }
   async writeFiles(expectedRevision: string, edits: FileEdit[]) {
     if (!Array.isArray(edits) || !edits.length || edits.length > 100) throw new Error('一次需要提交 1–100 个源文件');
-    const names = new Set<string>(); let size = 0;
+    const exact = new Set<string>(); let size = 0;
     for (const file of edits) {
       if (!file || typeof file.content !== 'string') throw new Error('源文件需要 path 和 content');
-      projectPath(file.path);
+      projectPath(file.path); assertWritableName(file.path);
       if (!textExtensions.has(path.extname(file.path))) throw new Error('请用 motion_import_asset 导入媒体文件');
-      if (names.has(file.path)) throw new Error('提交包含重复文件');
-      names.add(file.path); size += Buffer.byteLength(file.content);
+      size += Buffer.byteLength(file.content);
     }
     if (size > 8 * 1024 * 1024) throw new Error('一次提交不能超过 8 MB');
+    // Duplicate detection folds on case-insensitive volumes; the entry-file guard stays on exact paths.
+    if (firstFoldedDuplicate(edits.map(file => file.path), foldsProjectNames)) throw new Error('提交包含重复文件');
+    for (const file of edits) exact.add(file.path);
     return this.lock(async () => {
       const current = await this.get();
       if (current.revision !== expectedRevision) throw new Conflict();
-      if (!current.project && !names.has('index.html')) throw new Error('新工程必须包含 index.html');
+      if (!current.project && !exact.has('index.html')) throw new Error('新工程必须包含 index.html');
       const paths = await Promise.all(edits.map(file => this.safePath(file.path)));
       if ((await this.get()).revision !== expectedRevision) throw new Conflict();
       for (let i = 0; i < edits.length; i++) await atomic(paths[i], edits[i].content);
@@ -468,7 +477,7 @@ export class WorkspaceStore {
   }
   async importAsset(expectedRevision: string, sourcePath: string, targetPath: string) {
     if (!path.isAbsolute(sourcePath)) throw new Error('素材来源必须是本地绝对路径');
-    projectPath(targetPath);
+    projectPath(targetPath); assertWritableName(targetPath);
     if (!targetPath.startsWith('assets/')) throw new Error('素材目标必须位于 assets/');
     const source = await stat(sourcePath);
     if (!isAssetFileWithinLimit(source)) throw new Error('素材必须是不超过 500 MB（500000000 字节）的文件');

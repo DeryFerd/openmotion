@@ -152,3 +152,28 @@ test('native project service avoids Fetch-restricted ports after repeated switch
     assert.equal((await response.json()).projectDir, store.projectDirectory);
   } finally { await studio.close(); }
 }));
+
+test('project writes reject portable-name violations on every platform', () => fixture(async store => {
+  const initial = await store.get();
+  await assert.rejects(store.writeFiles(initial.revision, [{ path: 'con.html', content: 'reserved' }]), /路径无效/);
+  await assert.rejects(store.writeFiles(initial.revision, [{ path: 'notes. ', content: 'trailing' }]), /路径无效/);
+  const source = path.join(store.directory, 'source.png');
+  await writeFile(source, 'png-bytes');
+  await assert.rejects(store.importAsset(initial.revision, source, 'assets/nul.png'), /路径无效/);
+  const written = await store.writeFiles(initial.revision, [{ path: 'notes.md', content: 'kept' }]);
+  assert.equal((await store.readFile('notes.md')).content, 'kept');
+  assert.ok(written.revision);
+}));
+test('case-folded duplicates and entry names are judged separately', () => fixture(async store => {
+  const initial = await store.get();
+  if (['win32', 'darwin'].includes(process.platform)) {
+    await assert.rejects(store.writeFiles(initial.revision, [{ path: 'A.css', content: 'a' }, { path: 'a.css', content: 'b' }]), /重复文件/);
+  } else {
+    const written = await store.writeFiles(initial.revision, [{ path: 'A.css', content: 'a' }, { path: 'a.css', content: 'b' }]);
+    assert.ok(written.revision);
+  }
+}));
+test('a differently cased entry file does not satisfy the create guard', { skip: !['win32', 'darwin'].includes(process.platform) && 'case-insensitive file systems only' }, () => fixture(async store => {
+  const initial = await store.get();
+  await assert.rejects(store.writeFiles(initial.revision, [{ path: 'Index.html', content: '<html></html>' }]), /index\.html/);
+}, false));
