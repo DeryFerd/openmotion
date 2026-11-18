@@ -7,6 +7,17 @@ import { onboardingSourceFiles, onboardingTemplateIds } from '../shared/onboardi
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 
+// Local-only maintainer material must never reach a published package, however a
+// caller assembles its selection. These names are reserved at the repository root
+// only, so a nested document such as docs/superpowers/specs is unaffected.
+const localOnlyPaths = ['AGENTS_PR_RULE.md', 'PR_SKILLS.md', 'PRE-PR.md', 'codex-security', 'superpowers', 'humanizer', 'AUDIT_PR'];
+export const isLocalOnlyPath = (file: string) => localOnlyPaths.some(entry => file === entry || file.startsWith(entry + '/'));
+
+/** The single selection rule for every shipped artifact: caller inclusion, minus reserved local-only material. */
+export function selectDistributionFiles(files: Iterable<string>, include: (file: string) => boolean) {
+  return [...new Set(files)].filter(file => include(file) && !isLocalOnlyPath(file)).sort();
+}
+
 // New documentation and developer scripts require an explicit distribution decision.
 const motionPackageFiles = [
   'docs/brand-kits.md',
@@ -755,7 +766,7 @@ export async function distributionFiles(profile: string, include: (file: string)
   await walk('studio/public', /\.(?:html|js|css|json|svg|png|jpg|webp|woff2?|ttf|txt)$/);
   // A lightweight application must not require optional showcase bytes that its
   // caller intentionally excludes. Full bundles still validate the whole list.
-  const selected = [...new Set(files)].filter(include).sort();
+  const selected = selectDistributionFiles(files, include);
   for (const file of selected) {
     const info = await lstat(path.join(root, file)).catch(error => {
       if (error.code === 'ENOENT' && /\.(?:mp4|motion|gif|png|jpe?g|webp)$/i.test(file)) throw new Error(`Optional media is missing: ${file}. Run npm run media:pull for transferred files, or the scoped LFS pull in docs/repository-storage.md.`);
