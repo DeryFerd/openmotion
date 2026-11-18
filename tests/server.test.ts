@@ -45,15 +45,21 @@ test('settings and MCP bookmarks load independently of an unavailable native pro
   assert.equal((await request('/?project=project')).status, 400);
   assert.equal(attempts, 1);
 }));
-test('cross-site pages cannot trigger GET routes that start server-side work', () => fixture(async store => {
-  const request = transport(store), crossSite = { headers: { 'sec-fetch-site': 'cross-site' } };
-  for (const route of ['/motion-api/settings/account?refresh=true', '/motion-api/models?refresh=true', '/motion-api/models/capabilities?refresh=true',
-    '/motion-api/project/status', '/motion-api/brand-kits/catalog/example/cover']) {
-    assert.equal((await request(route, crossSite)).status, 403, route);
+test('cross-origin pages cannot trigger read routes that start server-side work', () => fixture(async store => {
+  const request = transport(store);
+  for (const site of ['cross-site', 'same-site', 'unrecognized']) {
+    for (const method of ['GET', 'HEAD']) {
+      for (const route of ['/motion-api/settings/account?refresh=true', '/motion-api/models?refresh=true', '/motion-api/models/capabilities?refresh=true',
+        '/motion-api/project/status', '/motion-api/brand-kits/catalog/example/cover', '/api/project/status', '/design-api/project/status']) {
+        assert.equal((await request(route, { method, headers: { 'sec-fetch-site': site } })).status, 403, `${site} ${method} ${route}`);
+      }
+    }
   }
-  // Same-origin readers and non-browser clients keep working; only cross-site callers are refused.
+  // Same-origin readers, direct navigation and non-browser clients keep working.
   assert.notEqual((await request('/motion-api/project/status')).status, 403);
-  assert.notEqual((await request('/motion-api/settings/account', { headers: { 'sec-fetch-site': 'same-origin' } })).status, 403);
+  for (const site of ['same-origin', 'none']) {
+    assert.notEqual((await request('/motion-api/settings/account', { headers: { 'sec-fetch-site': site } })).status, 403);
+  }
 }));
 test('wrapper rejects cross-origin mutations and DNS rebinding hosts', () => fixture(async store => {
   for (const headers of [ { host: 'localhost:4173', origin: 'https://remote.example' }, { host: 'evil.example', origin: 'http://evil.example' } ]) {

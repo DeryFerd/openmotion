@@ -352,7 +352,8 @@ export async function handler(req: IncomingMessage, res: ServerResponse, store =
       }
     }
     if (motionRequest) url.pathname = url.pathname.replace(/^\/(?:motion|design)-api\//, '/api/');
-    if ((req.method === 'GET' || req.method === 'HEAD') && req.headers['sec-fetch-site'] === 'cross-site'
+    const fetchSite = req.headers['sec-fetch-site'];
+    if ((req.method === 'GET' || req.method === 'HEAD') && fetchSite !== undefined && fetchSite !== 'same-origin' && fetchSite !== 'none'
       && sideEffectingGet.some(pattern => pattern.test(url.pathname))) return json(res, 403, { error: '仅允许当前预览页面读取' });
     if (motionRequest && url.pathname.startsWith('/api/assets/conversations')) {
       const chats = assetConversations(store);
