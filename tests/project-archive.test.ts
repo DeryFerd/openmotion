@@ -292,3 +292,16 @@ test('import refuses a reserved device name that a write would now reject', () =
   ]);
   assert.throws(() => readProjectZip(bytes), /Invalid or unsupported ZIP/);
 });
+
+test('archive CI lane checks portable names through project write and asset APIs', () => fixture(async store => {
+  const current = await store.get();
+  await assert.rejects(store.writeFiles(current.revision, [{ path: 'con.html', content: html }]), /路径无效/);
+  const source = path.join(store.directory, 'portable-source.png');
+  await writeFile(source, Buffer.from('asset-fixture'));
+  await assert.rejects(store.importAsset(current.revision, source, 'assets/nul.png'), /路径无效/);
+}));
+
+test('archive CI lane keeps the entry-file guard exact on every platform', () => fixture(async store => {
+  const current = await store.get();
+  await assert.rejects(store.writeFiles(current.revision, [{ path: 'Index.html', content: html }]), /index\.html/);
+}, false));
