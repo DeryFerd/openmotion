@@ -55,11 +55,10 @@ Before material grouping, the recreation guidance distinguishes object motion, i
 | openmotion-template-to-video | 已有模板原样出片、源码适配与内容替换 | 已接入默认 template 路线，共用修改与 revision 规范 |
 | openmotion-video-to-template | 把视频制作成可复用模板文件夹 / ZIP | 已纳入分发与资源读取，不代替普通视频复刻 |
 | openmotion-recreate | 从参考重建用户本次作品 | 已接入实际流程；自带重建、测量参考与脚本 |
-| reference-video | 旧引用的原生编写兼容入口 | 通用正文迁入共享 native，非复刻专业实现 |
 
-各入口正文先说明职责与目标：production 负责既定决定下的工程接续与交付，director 从产品事实、受众与传播目的判断动态表达，openmotion-template-to-video 负责既有模板出片与内容适配，recreate 根据实际参考重建并核对差距；reference-video 继续承担兼容引导。director v1.4.5 明确局部创作和声音重新设计也可直接进入；替换已选音轨与重新设计声画关系按本轮目标区分，画面锁定只决定保持项。角色定位不增加固定风格或新的专业能力，也不代表多个独立 Agent。
+各入口正文先说明职责与目标：production 负责既定决定下的工程接续与交付，director 从产品事实、受众与传播目的判断动态表达，openmotion-template-to-video 负责既有模板出片与内容适配，recreate 根据实际参考重建并核对差距。director v1.4.5 明确局部创作和声音重新设计也可直接进入；替换已选音轨与重新设计声画关系按本轮目标区分，画面锁定只决定保持项。角色定位不增加固定风格或新的专业能力，也不代表多个独立 Agent。
 
-按用户意图选路，不以视频文件格式代替意图判断。模板目录的 builtin 与可编辑 registry 进入 template；video-only reference 进入 recreate。参考只提供气质时仍为原创。既有模板工程的普通局部修改不重新应用模板。
+按用户意图选路，不以视频文件格式代替意图判断。模板目录的 builtin 与可编辑 Prism 进入 template；video-only reference、registry 及无工程的资料包进入 recreate。参考只提供气质时仍为原创。既有模板工程的普通局部修改不重新应用模板。
 
 专业入口可由宿主 Skill 自动匹配、用户指定或准确模板指引直接选中，只读取共享 context 后继续，不返回 production 重做选路；各入口范围以其 Skill 说明和上表为准。仅脚本或审片停在当前范围；共享质量参考不会要求重启 director 的完整创作流程。Skills 是同一 Agent 的文档，不是相互递归执行的独立进程。
 
@@ -106,7 +105,7 @@ A prior local trial used only “做一个哈利波特宣传片” in a fresh gp
 
 原创制作按任务读取动作脚本、动态表现和短句参考，无需用户额外说“Motion 感”。多段/截图/状态延续、声音设计和动态审片按职责加载相应参考。模板与复刻按影响复用相同标准，不强制换成原创叙事、固定动效或固定音乐结构。
 
-一期公开接口已收敛为 [16 个 openmotion_ 注册名](mcp-phase1-tools.md)（15 项领域能力，含素材库兼容别名）。旧 28 项实现只留内部兼容；读文件、任务查询及技术校验分别并入项目读取与导出流程。一期插件和四宿主薄适配器包含上述五个创作入口、支撑 Skill `openmotion-media` 及其参考，reference-video 仅保留源码兼容入口：它只转到共享原生编写规范，不另立规则；确认源码安装、旧提示词和宿主配置都不再按名称调用它后，删除该目录，并同步 `tests/package.test.ts` 的核心目录清单。核心 Skill 指引同步使用新契约；不新增制作引擎或自动复刻算法。
+一期公开接口已收敛为 [16 个 openmotion_ 注册名](mcp-phase1-tools.md)（15 项领域能力，含素材库兼容别名）。旧 28 项实现只留内部兼容；读文件、任务查询及技术校验分别并入项目读取与导出流程。一期插件和四宿主薄适配器包含上述五个创作入口、支撑 Skill `openmotion-media` 及其参考；源码中原有的 reference-video 兼容入口已在确认无源码安装、提示词或宿主配置按名称调用后删除。核心 Skill 指引同步使用新契约；不新增制作引擎或自动复刻算法。
 
 ## Shared production reading scope
 

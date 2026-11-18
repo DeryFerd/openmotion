@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { access, mkdir, readFile, writeFile, readdir, symlink } from 'node:fs/promises';
+import { access, mkdir, mkdtemp, readFile, rm, writeFile, readdir, symlink } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { execFileSync } from 'node:child_process';
 import { setTimeout as delay } from 'node:timers/promises';
 import path from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
@@ -305,3 +307,15 @@ test('archive CI lane keeps the entry-file guard exact on every platform', () =>
   const current = await store.get();
   await assert.rejects(store.writeFiles(current.revision, [{ path: 'Index.html', content: html }]), /index\.html/);
 }, false));
+
+test('archive import rejects a source that would block without a writer', { skip: process.platform === 'win32' && 'FIFO sources are POSIX-only' }, () => fixture(async store => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'motion-archive-fifo-'));
+  try {
+    const source = path.join(directory, 'project.zip');
+    execFileSync('mkfifo', [source]);
+    const started = Date.now();
+    // A blocking open would wait for a writer and stall the serialized tool queue.
+    await assert.rejects(projectArchive(store, { action: 'import', requestId: 'fifo-source', sourcePath: source }), /regular file/);
+    assert.ok(Date.now() - started < 5000, 'a FIFO source must be rejected without waiting for a writer');
+  } finally { await rm(directory, { recursive: true, force: true }); }
+}));

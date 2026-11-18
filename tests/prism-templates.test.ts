@@ -119,6 +119,19 @@ test('gallery, public template tools and project creation use the same published
   assert.throws(() => validateInput(phase1Tools.find(tool => tool.name === 'openmotion_list_templates')!.inputSchema, { query: 'x' }), /INVALID_ARGUMENT/);
 });
 
+test('CMS guidance packages without index.html route to recreation', async t => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'motion-prism-guidance-'));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const remote = mockPrism(), data = publication();
+  const [editable] = data.content['zh-CN'].templates;
+  data.content['zh-CN'].templates.push({ ...editable, templateId: 'guidance-only', files: editable.files.filter((file: { path: string }) => file.path !== 'index.html') });
+  remote.update(data);
+  const catalog = new TemplateCatalog(directory, { fetch: remote.request });
+  const guidance = await catalog.detail('guidance-only');
+  assert.equal(guidance.hasHtmlProject, false);
+  assert.equal(guidance.workflowGuide.workflow, 'recreate');
+  assert.equal((await catalog.detail('test-motion-1')).workflowGuide.workflow, 'template');
+});
 test('template files cannot escape the destination; known built-ins work without the network', async t => {
   const directory = await mkdtemp(path.join(tmpdir(), 'motion-prism-path-'));
   t.after(() => rm(directory, { recursive: true, force: true }));

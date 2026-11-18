@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { createHash, randomUUID } from 'node:crypto';
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { templatePage, type GalleryTemplate } from './shared/catalog.ts';
+import { templatePage, templateWorkflow, type GalleryTemplate } from './shared/catalog.ts';
 import { catalogLocale } from './shared/template-locale.ts';
 import { templateConfig } from './shared/template-config.ts';
 import { libraryTemplates, templateRecipe } from './template-catalog.ts';
@@ -232,17 +232,17 @@ export class TemplateCatalog {
       const instructions = (await readRepositoryFile(this.repositoryRoot, id + '/TEMPLATE.md')).toString('utf8');
       const content = (await readRepositoryFile(this.repositoryRoot, id + '/source/motion.md')).toString('utf8');
       return { ...template, instructions, motionDocument: { path: template.localSource.motionPath, content }, source: this.source,
-        workflowGuide: { workflow: template.hasHtmlProject ? 'template' : 'production', section: 'start', status: 'ready' } };
+        workflowGuide: { workflow: templateWorkflow(template), section: 'start', status: 'ready' } };
     }
     if (snapshot.hosted && template.kind !== 'builtin') {
       const instructions = (await this.hostedFile(snapshot, id, 'TEMPLATE.md')).toString('utf8');
       const content = (await this.sourceFile(id, 'motion.md')).toString('utf8');
       return { ...template, instructions, motionDocument: { path: `/api/template-source/${id}/motion.md`, content }, source: this.source,
-        workflowGuide: { workflow: template.hasHtmlProject ? 'template' : 'production', section: 'start', status: 'ready' }, warning: this.warning };
+        workflowGuide: { workflow: templateWorkflow(template), section: 'start', status: 'ready' }, warning: this.warning };
     }
     const guide = template.files?.find(file => file.path === 'TEMPLATE.md');
     const instructions = guide ? (await this.downloadFile(id, guide)).toString('utf8') : templateRecipe(template);
-    return { ...template, instructions, workflowGuide: { workflow: 'template', section: 'start', status: 'ready' }, warning: this.warning };
+    return { ...template, instructions, workflowGuide: { workflow: templateWorkflow(template), section: 'start', status: 'ready' }, warning: this.warning };
   }
 
   async sourceFile(id: string, name: string): Promise<Buffer> {

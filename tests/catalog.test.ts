@@ -8,7 +8,7 @@ import { spawnSync } from 'node:child_process';
 import { mkdtemp, readFile, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { catalogTemplates, featuredTemplateIds, groupTemplates, isCatalogMedia } from '../shared/catalog.ts';
+import { catalogTemplates, featuredTemplateIds, groupTemplates, isCatalogMedia, isEditableTemplate } from '../shared/catalog.ts';
 import { libraryTemplates, listTemplates, getTemplate, readTemplate } from '../template-catalog.ts';
 import { templatePrompt, guideUrl } from '../shared/integration.ts';
 import { pluginRoot } from '../hyperframes.ts';
@@ -106,7 +106,7 @@ test('HTTP catalog, local posters and copied guides resolve the exact selected t
         const response = await request(guideUrl(info, host, id)); assert.equal(response.status, 200);
         const guide = await response.text(); assert.ok(guide.includes(`模板 ID：${id}`));
         assert.ok(guide.includes(template.title));
-        const expectedRoute = template.kind === 'reference' ? 'recreate' : 'template';
+        const expectedRoute = isEditableTemplate(template) ? 'template' : 'recreate';
         assert.ok(guide.includes(`openmotion://workflow/${expectedRoute}/start`));
         assert.deepEqual(readTemplate(id).workflowGuide, { workflow: expectedRoute, section: 'start', status: 'ready' });
         assert.match(guide, /本次用户明确要求成片或导出/);
@@ -148,6 +148,9 @@ test('internal legacy compatibility reads the selected reference and uses the na
     assert.equal((await store.get()).project!.html, html);
     assert.equal(readTemplate('product-promo').workflow, 'openmotion_apply_template');
     assert.equal(readTemplate(templateId).workflow, 'openmotion_import_asset + openmotion_write_files');
+    const registry = libraryTemplates.find(template => template.kind === 'registry')!;
+    assert.equal(isEditableTemplate(registry), false);
+    assert.equal(readTemplate(registry.id).workflowGuide.workflow, 'recreate');
     await assert.rejects(callTool('openmotion_get_template', { templateId: 'missing' }, store), /模板不存在/);
   } finally { await closeFixtureEditor(directory); await rm(directory, { recursive: true, force: true }); }
 });
