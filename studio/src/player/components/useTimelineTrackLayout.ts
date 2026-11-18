@@ -9,6 +9,7 @@ import { useTimelineTrackDerivations } from "./useTimelineTrackDerivations";
 import { buildTimelineTrackInsertLayout } from "./timelineTrackInsertLayout";
 import {
   TRACK_H,
+  MAIN_TRACK_H,
   createTimelineRowGeometry,
   type TimelineRowGeometry,
   type TimelineTrackPadding,
@@ -19,6 +20,7 @@ import type { TimelineTrackGroupInfo } from "./useTimelineTrackDerivations";
 import { groupAutomationElement } from "./groupAutomationElement";
 import { AUTOMATION_LANE_H } from "./automationLaneHeight";
 import { useMvpEditor } from "../../motion/StudioHost";
+import { mainVisualTrack } from "./timelineLinkage";
 import { centerTimelineTracks } from "./timelineTrackAlignment";
 
 /** Automation rows the GROUP itself owns — its `data-automation`, not its members'. */
@@ -162,6 +164,20 @@ function applyGroupStripHeights(
   });
 }
 
+/** Emphasize the main clip row without moving expanded property/automation lanes. */
+export function mainTrackRowHeights(
+  tracks: readonly (readonly [number, readonly TimelineElement[]])[],
+  heights: number[],
+  expandedClipIds: ReadonlySet<string>,
+): number[] {
+  const main = mainVisualTrack(tracks.flatMap(([, elements]) => elements));
+  return tracks.map(([track, elements], index) =>
+    track === main && !isTrackRowExpanded(elements, expandedClipIds)
+      ? Math.max(MAIN_TRACK_H, heights[index] ?? TRACK_H)
+      : heights[index] ?? TRACK_H,
+  );
+}
+
 function useTimelineRowHeights(
   tracks: [number, TimelineElement[]][],
   gsapAnimations: Map<string, GsapAnimation[]>,
@@ -169,6 +185,7 @@ function useTimelineRowHeights(
   selectedElementIds: ReadonlySet<string>,
   groups: readonly TimelineTrackGroupInfo[],
   trackPadding: TimelineTrackPadding | undefined,
+  emphasizeMain: boolean,
 ) {
   const padTop = trackPadding?.top;
   const padBottom = trackPadding?.bottom;
@@ -213,11 +230,12 @@ function useTimelineRowHeights(
       laneCounts,
       rowGeometry: createTimelineRowGeometry(
         tracks.map(([track]) => track),
-        rowHeights,
+        emphasizeMain ? mainTrackRowHeights(tracks, rowHeights, expandedClipIds) : rowHeights,
         { top: padTop, bottom: padBottom },
       ),
     };
   }, [
+    emphasizeMain,
     padTop,
     padBottom,
     expandedClipIds,
@@ -260,6 +278,7 @@ export function useTimelineTrackLayout(
     selectedElementIds,
     groups,
     centered ? { top: trackPadding?.top ?? TRACK_H, bottom: trackPadding?.bottom ?? TRACK_H } : trackPadding,
+    centered,
   );
   const rowGeometry = useMemo(() => centered ? centerTimelineTracks(naturalGeometry, viewportHeight) : naturalGeometry, [centered, naturalGeometry, viewportHeight]);
   const rowGeometryRef = useRef(rowGeometry);

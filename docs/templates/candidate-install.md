@@ -37,3 +37,4 @@ Keep installation/host loading and video-component readiness as separate interna
 3. Fill a **private copy** of `acceptance.md` with actual PASS / FAIL / NOT RUN results and evidence. Report failures and retain the generated candidate identity. Do not edit/re-upload the frozen candidate artifact. Do not publish npm, upload a guide or change a tag as part of installation/testing.
 
 The sibling `install.md` is frozen for **after npm publication** and points at the exact registry version. Before publication, use this `candidate-install.md` and local tgz. Successful installation does not authorize release.
+{{DSH_INSTRUCTIONS}}

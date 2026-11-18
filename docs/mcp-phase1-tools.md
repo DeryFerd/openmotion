@@ -3,7 +3,7 @@
 
 ## 结论与本次落地范围
 
-本地候选包版本为0.6.3，避免误复用缺少模板目录接口的旧服务和宿主缓存；尚未发布。源码和默认导出均使用 `phase1`，只公开以下 16 个注册名称（含一个资产兼容名）。发现、调用门禁、接入元数据和构建使用同一注册表；旧名不可绕过调用。原有领域服务、Studio、渲染器和内部兼容 handler 保留。适配不只是改名：补了项目身份、批量导入、请求去重、版本和保存保护、取消终态、自动导出校验。
+本地候选包版本取自 `.codex-plugin/plugin.json`，避免误复用缺少模板目录接口的旧服务和宿主缓存；尚未发布。源码和默认导出均使用 `phase1`，只公开以下 16 个注册名称（含一个资产兼容名）。发现、调用门禁、接入元数据和构建使用同一注册表；旧名不可绕过调用。原有领域服务、Studio、渲染器和内部兼容 handler 保留。适配不只是改名：补了项目身份、批量导入、请求去重、版本和保存保护、取消终态、自动导出校验。
 
 Skill 是指导文档，与公开 Tool 数量分开。本次后续命名与分发对齐后，一期装入 openmotion-production、openmotion-director、openmotion-template-to-video、openmotion-recreate、openmotion-video-to-template 五个创作入口及其参考，以及按需支撑多模态素材生成的 openmotion-media。模板使用与视频转模板保留已有实际流程；openmotion-recreate 包含实际复刻流程，规则与测量脚本随 Skill 分发，不新增自动创作算法或 Tool。原九个工程 Tool 保留，本次新增目录获取和模板详情入口；详见 [Skill 路由与能力边界](skills.md)。
 
@@ -33,7 +33,6 @@ Production reads a prebuilt browser bundle, three integrity-locked builtin MP4 p
 | openmotion_media_use | Shared Model Gateway | Discovery and references for new assets_use generation; project-direct generate (optional project referenceAsset; audio mode follows the selected model)/status/cancel retained for compatibility with dedicated media adapters, OpenDesign account models and registered compatible image/speech APIs; service-owned keys, explicit project, stable request ID, automatic local asset-library saving and original project paths, save-only recovery; does not edit the composition |
 | openmotion_list_templates | Repository, hosted CDN or configured CMS catalog | No query arguments; returns source, a local JSONL index, count and catalog version for local search |
 | openmotion_get_template | Same repository/hosted/CMS reader | Exact ID; repository entries return local instructions, motionDocument content and absolute localSource paths |
-| openmotion_media_use | Fixture-based provider references, discovery, authenticated requests, job ownership, output validation and import, and rejection without paid retries | tests/byok.test.ts, tests/provider-settings.test.ts |
 | openmotion_create_project | 项目目录、空白工程、模板复制、会话归属 | 新建独立载体、保存需求/来源、返回初始内容版本；宿主 Agent 制作影片 |
 | openmotion_open_preview | 原预览、项目选择、原生 lint | 打开指定已有工程；仅明确绑定的 OpenMotion 会话可省 projectId；返回真实 URL |
 | openmotion_import_assets | 素材目录、FFprobe/FFmpeg | 实际本机媒体批量持久化、逐项结果、稳定素材 ID、去重；不自动排入时间线 |
@@ -56,6 +55,14 @@ Failures resolve with `{isError:true,error:{code,message,applied}}`, because rej
 
 
 The shared WebMCP registrar measures all twenty-one page tools through the existing Studio tracking transport. `webmcp_tool_started` and `webmcp_tool_finished` correlate one invocation by `call_id`, with the public `tool_name`, `transport=webmcp`, observed outcome and elapsed milliseconds. `webmcp_registration_result` measures each attempted registration, including refusal and cleanup cancellation. Collection remains asynchronous and respects existing privacy settings and Do Not Track; analytics failures never retry a tool or replace its result. No tool arguments, returned content, handles, paths or raw errors are recorded. These browser events are separate from unchanged stdio MCP events and existing domain-operation results; a failed or cancelled invocation does not establish whether a mutation was applied or rolled back. See [tracking coverage and limits](../tracking/README.md#implemented-signals-and-limits).
+
+## Video artifact completion
+
+Once the requested video artifact is complete, call `openmotion_open_preview({action:"complete_generation",projectId,workId,requestId,expectedRevision,expectedVersionId})` immediately, including background work. This independently validates the current native video artifact and records its first completion. It performs no save, preview opening or export. Use the current identities from `openmotion_get_project` after direct filesystem authoring. Intermediate source changes and metadata-only edits do not establish completion.
+
+Each generation round has one `workId` within its `projectId`. Begin returns that ID before authoring. Completion requires an authored video content change from the initial version, a positive native duration, successful native lint and matching version identities. The completion action keeps the editor closed and records no save operation. Repeated request IDs return the same result. Repeated completion declarations retain the first completion time. Export-only rounds use `generation:false`.
+
+The `work_generation_stage` event follows started, generated, edited and exported observations. Studio manual content edits count after completion. Metadata renames, failed edits and Agent writes are excluded from the editing conversion. Studio exports bind the work at request time and record success from the backend render receipt even after the browser closes. MCP export jobs retain their explicit work identity.
 
 ## 共用约束
 
@@ -92,7 +99,7 @@ With `action=brand_kit`, supply a nested `brandKit` command. This is the Studio 
 
 ### openmotion_list_templates / openmotion_get_template
 
-List has no arguments and returns source, indexPath, total and catalogVersion. Search the local JSONL index; repository rows include localSource paths. Get requires templateId and reads the selected template's instructions. Repository mode also returns motionDocument={path,content} and localSource paths for metadata, guide, manifest and examples, without requiring an editor/backend or CMS request; hosted catalog entries return motionDocument without localSource paths, and built-in examples stay answerable without a catalog request. Source checkouts default to repository; NPM distributions without catalog files default to the latest hosted `main` catalog, while explicit CMS mode retains publication caching. See [startup and source selection](template-repository.md#run-from-a-local-clone). Guidance-only examples require authoring a new project; direct projectType=template copying still requires actual editable project files.
+List has no arguments and returns source, indexPath, total and catalogVersion. Search the local JSONL index; repository rows include localSource paths. Get requires templateId and reads the selected template's instructions. Repository mode also returns motionDocument={path,content} and localSource paths for metadata, guide, manifest and examples, without requiring an editor/backend or CMS request; hosted catalog entries return motionDocument without localSource paths, and built-in examples stay answerable without a catalog request. Source checkouts default to repository; NPM distributions without catalog files default to the latest hosted `main` catalog, while explicit CMS mode retains publication caching. See [startup and source selection](template-repository.md#run-from-a-local-clone). Guidance-only entries return workflowGuide `recreate`: openmotion-recreate rebuilds them from their guidance package and linked reference video; direct projectType=template copying still requires actual editable project files.
 
 ### openmotion_create_project
 
@@ -170,8 +177,8 @@ The open editor also shows these restore refusals through its shared dismissible
 
 ## 注册、构建与兼容
 
-- shared/mcp-profiles.json 是14个注册名称的唯一公开清单，shared/mcp-release.json 默认 phase1；mcpRegistry 同时控制发现与调用，禁止运行时环境变量扩大列表。新增/缺失实现由构建完整性检查拦截。
-- npm run package:phase1 构建 Studio 并生成 dist/openmotion-0.6.3-phase1.zip；npm run package:plugin 默认也沿用 phase1。该插件 ZIP 不带原生 Node/浏览器/FFmpeg：使用支持的本机 Node、首次安装锁定依赖，FFmpeg/ffprobe 需本机可用。
+- shared/mcp-profiles.json 是16个注册名称(含一个资产兼容名)的唯一公开清单，shared/mcp-release.json 默认 phase1；mcpRegistry 同时控制发现与调用，禁止运行时环境变量扩大列表。新增/缺失实现由构建完整性检查拦截。
+- npm run package:phase1 构建 Studio 并生成 dist/openmotion-<version>-phase1.zip(版本取自 .codex-plugin/plugin.json,DEV 模板环境再带 -dev 后缀)；npm run package:plugin 默认也沿用 phase1。该插件 ZIP 不带原生 Node/浏览器/FFmpeg：使用支持的本机 Node、首次安装锁定依赖，FFmpeg/ffprobe 需本机可用。
 - 四宿主薄适配器从同一运行时导出，scope.json 记录 profile，复制上述5个创作入口及支撑 Skill `openmotion-media`；不另维护 allowlist。数据目录放在 runtime/插件缓存之外。资源指导通过本地文件或 resources/list、resources/read 取得，不另增加 workflow Tool。
 - 完整原生测试包的 build <target> <beta-version> [phase1|legacy] 使用同表检查并写 release.json；本次不声称重新制作/验收各平台原生安装包。
 - Internal compatibility handlers and explicit legacy development builds remain separate; hidden calls return MCP_TOOL_NOT_EXPOSED in phase-one packages. Existing supported phase-one calls continue across compatible updates. Newly added Tools, changed discovery metadata and Skills require host refresh before use.
@@ -217,8 +224,9 @@ Protocol 1 preserves existing request/response shapes and semantics. New Tools a
 | openmotion_list_versions | 最近5条/更早页、当前版本标识、跨重启历史仍可读 | tests/phase1.test.ts |
 | openmotion_restore_version | v5恢复v3产生v6并保留v4/v5；历史音视频；中断恢复及外部第三种内容保护 | tests/phase1.test.ts |
 | openmotion_export_cancel | 排队取消、运行中确认停止、跨项目拒绝、已完成不改状态、旧结果保留 | tests/phase1.test.ts、tests/phase1-runtime.test.ts、tests/phase1-package.mjs |
+| openmotion_media_use | fixture 提供方引用、发现、鉴权请求、任务归属、输出校验与导入,并拒绝无谓的付费重试;项目内 generate 路径保留兼容 | tests/byok.test.ts、tests/provider-settings.test.ts |
 
-复测命令：后端 `node --experimental-strip-types --test --test-concurrency=1 tests/*.test.ts`；实际包 `node tests/phase1-package.mjs /absolute/path/openmotion-0.6.3-phase1.zip /absolute/path/evidence`。完整测试包和四宿主真实模型任务另行验收。
+复测命令：后端 `node --experimental-strip-types --test --test-concurrency=1 tests/*.test.ts`；实际包 `node tests/phase1-package.mjs /absolute/path/openmotion-<version>-phase1.zip /absolute/path/evidence`。完整测试包和四宿主真实模型任务另行验收。
 
 
 ### 测试代码与CI范围
@@ -252,11 +260,17 @@ Creation and content edits use `openmotion_open_preview(action=begin)` as silent
 
 ## Media setup handoff
 
-The media example in the MCP handbook starts with provider inspection. An available provider continues the existing brief or leads to a question about the desired generated content or reference. With no available provider, `openmotion_open_preview({ target: "providers" })` returns the Model providers page handoff, independently of any project; the Agent guides the user to sign in with an OpenDesign account (a paid plan provides multimodal generation) or save another provider's key. When several providers are available, OpenDesign (account, then Cloud) is used first and the Agent picks among the others without asking, stating the chosen provider and model. It accepts only `action: "open"`, `embedded` and `presentation`, with the same host focus policy as template browsing. The host presents the page and verifies visibility. The user saves credentials in settings and reports completion, then the Agent re-inspects and resumes the original request. Setup and discovery do not submit generation jobs. The `inspect` response includes `settingsHandoff` with this public call.
+The media example in the MCP handbook starts with provider inspection. An available provider continues the existing brief or leads to a question about the desired generated content or reference. With no available provider, `openmotion_open_preview({ target: "providers", entry: "..." })` returns the Model providers page handoff with an attributed `entry_from` query parameter (`agent_providers` by default, or an explicit closed reason such as `agent_media_signed_out`, `agent_media_upgrade_free`, `agent_media_upgrade_go`, `agent_media_balance_low`, `agent_media_key_rejected`, `agent_media_handbook`), independently of any project; the Agent guides the user to sign in with an OpenDesign account (a paid plan provides multimodal generation) or save another provider's key. When several providers are available, OpenDesign (account, then Cloud) is used first and the Agent picks among the others without asking, stating the chosen provider and model. `target=providers` accepts only `action: "open"`, `embedded`, `presentation` and `entry`, with the same host focus policy as template browsing. The host presents the page and verifies visibility. The user saves credentials in settings and reports completion, then the Agent re-inspects and resumes the original request. Setup and discovery do not submit generation jobs. The `inspect` response includes `settingsHandoff` with this public call.
 
 ### Preferred generation
 
 For NEW generated media, use openmotion_media_use inspect/reference/models to discover configured capabilities, then openmotion_assets_use generate with the full model ID, status with the original jobId, get/read at a pinned assetId/versionId, and import_to_project only for selected film assets. No project is required for standalone generation. Use openmotion_assets only when tools/list lacks the preferred name; it has no read, so inspect adopted local media with available tools. Keep old media_use jobs on their original Tool/projectId/jobId and never import their project files twice. Image references pin exact image versions: image models with supportsImageReference edit with up to their maxInputImages (one for local Codex and OpenDesign account models), and video models that report maxInputImages take one image as the first frame; first-and-last-frame video is unavailable. Use resume with the original jobId and a stable requestId to check a failed/interrupted Cloud task with a known remoteId, without uploading inputs or submitting another paid generation. Cancelled jobs and confirmed remote failures cannot resume. Use retry_save only for retained local outputs (savePending); regeneration is a separate paid request requiring authorization. Studio offers Check original task on eligible failed jobs. Reference counts follow the selected model before any reference file is read; there is no fixed library count ceiling. Local Codex/account editing remains one image, video remains one first frame, and project referenceAsset remains image-only. Follow the shared generation boundary in production/materials. Keep credentials in Settings, obtain missing spend consent, explain unsupported capabilities and proposed alternatives, and do not silently downgrade. Regenerate only within the asset count and spend the user explicitly approved, including any retries they approved; otherwise ask before another paid request; unknown outcomes require original-job inspection, not a new paid submission.
+
+### Saved voice assets
+
+`openmotion_assets_use` accepts `action=voice` with a `voice` command (`list`, `get`, `add`, `update`, `check`, `discover`). Records store an existing Fish Audio or regional MiniMax Speech voice ID, not audio bytes or credentials. `update` and `check` require the current revision. `discover` may require pagination and missing entries do not prove deletion. `generate` accepts `voiceRef: {voiceId, revision}` for speech through the same provider; completed audio versions retain provenance. Local trash preserves remote voices and prior audio. See the [Fish guide](../skills/openmotion-media/references/providers/fishaudio.md) and [MiniMax guide](../skills/openmotion-media/references/providers/minimax-speech.md).
+
+`openmotion_media_use` with `action=inspect` returns provider connection state and `baseUrl`, plus optional `group` and `region` metadata for regional connections. MiniMax Speech returns separate `minimax-speech-cn` (China mainland, `https://api.minimax.cn`) and `minimax-speech` (International, `https://api.minimax.io`) entries under `group=MiniMax Speech`. Use the returned provider ID for model discovery and voice operations; there is no separate region argument. Fish Audio has one connection and no regional group. Credentials remain service-owned and are never returned.
 
 ## Transcript commands
 

@@ -33,10 +33,11 @@ test('Studio event types reject Node-only events and invalid semantic fields', (
   { cwd: pluginRoot, stdio: 'pipe' });
 });
 
-test('Motion editor events admit only closed categories, UUID projects and bounded counts', () => {
+test('Motion editor events admit only closed categories, bounded project identities and bounded counts', () => {
   const projectId = crypto.randomUUID(), exportId = crypto.randomUUID();
   const settings = { origin: 'export_panel', format: 'mp4', quality: 'standard', resolution: '1080p', fps: '30' };
   const valid: Array<[string, Record<string, unknown>]> = [
+    ['studio_edit_result', { outcome: 'success', edit_kind: 'move', surface: 'canvas', project_id: 'project' }],
     ['studio_load_result', { load_id: exportId, outcome: 'success', duration_ms: 10, embedded: false, project_scope: 'default' }],
     ['ui_click', { page_name: 'studio', area: 'header', element: 'export', interaction_method: 'pointer', project_scope: 'managed', project_id: projectId }],
     ['ui_click', { page_name: 'studio', area: 'project_drawer', element: 'language_change', option: 'pt-BR' }],
@@ -57,8 +58,7 @@ test('Motion editor events admit only closed categories, UUID projects and bound
     assert.deepEqual((omEvents as Record<string, { producers: readonly string[] }>)[event].producers, ['studio'], event);
   }
   const invalid: Array<[string, Record<string, unknown>]> = [
-    // The built-in project id is the literal `project`: it is a scope, never a project_id.
-    ['studio_edit_result', { outcome: 'success', edit_kind: 'move', surface: 'canvas', project_id: 'project' }],
+    ['studio_edit_result', { outcome: 'success', edit_kind: 'move', surface: 'canvas', project_id: 'a-private-project-title' }],
     ['studio_edit_result', { outcome: 'success', edit_kind: 'move', surface: 'canvas', project_name: 'Launch film' }],
     ['studio_edit_result', { outcome: 'success', edit_kind: 'Edit layer style', surface: 'canvas' }],
     ['studio_edit_result', { outcome: 'success', edit_kind: 'move' }],
@@ -223,14 +223,15 @@ test('PostHog adapter uses public ingest only, privacy fields and real receipt s
 
 test('all application versions report in development, test and production environments', async t => {
   const identity = { installation_id: crypto.randomUUID(), utm_source: null, created_at: new Date().toISOString() };
+  let bodies: any[] = [];
+  t.mock.method(globalThis, 'fetch', async (_url: any, init?: RequestInit) => {
+    bodies.push(JSON.parse(String(init?.body))); return Response.json({ status: 'Ok' });
+  });
   for (const appVersion of ['0.6.4', '0.6.4-test.8', '0.6.4-test.42.2', '0.6.4-local.1', '0.6.4-beta.1']) {
     for (const env of ['development', 'test', 'production'] as const) {
-      const bodies: any[] = [];
+      bodies = [];
       const options = { registry: omEvents, identity, appVersion, env, entrypoint: 'mcp' as const, enabled: true,
         flushIntervalMs: 0, host: 'https://us.i.posthog.com', token: 'phc_test' };
-      t.mock.method(globalThis, 'fetch', async (_url: any, init?: RequestInit) => {
-        bodies.push(JSON.parse(String(init?.body))); return Response.json({ status: 'Ok' });
-      });
       const tracking = createNodeTracking(options);
       try {
         assert.equal(tracking.enabled(), true); assert.equal(tracking.ingest(packet()), 'queued');
@@ -460,3 +461,51 @@ test('template library events: the search keyword is the only free text and stay
   ok('resource_download_result', { resource_kind: 'motion_guide', download_attempt_id: id, delivery_status: 'fetch_failed', error_code: 'HTTP_404' });
   no('resource_download_result', { resource_kind: 'motion_guide', download_attempt_id: id, delivery_status: 'saved_to_disk' });
 });
+
+test('provider setup handoff tracks MCP entries exclusively without counting WebMCP HTTP calls', () => fixture(async store => {
+  const { startServer } = await import('../server.ts');
+  const { rpc } = await import('../mcp.ts');
+  const events: PendingEvent[] = [];
+  const tracking = createTracker({ registry: omEvents, entrypoint: 'mcp', enabled: true, flushIntervalMs: 0, maxQueue: 64,
+    send: async batch => { events.push(...batch); return 'accepted'; } });
+  const running = await startServer(store, 0, { editor: false });
+  const address = running.server.address();
+  assert.ok(address && typeof address !== 'string');
+  await writeFile(path.join(store.directory, 'preview.json'), JSON.stringify({ port: address.port }));
+  store.tracking = tracking;
+  try {
+    // WebMCP / direct HTTP phase1 calls must never emit the MCP-only provider_setup_opened event.
+    const http = transport(store, { tracking, runtimeRoot: pluginRoot });
+    const webmcp = await http('/motion-api/phase1/call', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ name: 'openmotion_open_preview', arguments: { target: 'providers', entry: 'agent_media_upgrade_go' } }),
+    });
+    assert.equal(webmcp.status, 200);
+    assert.equal(new URL((await webmcp.json()).previewUrl).searchParams.has('entry_from'), false);
+
+    await rpc({ jsonrpc: '2.0', id: 'init', method: 'initialize', params: { clientInfo: { name: 'codex-mcp-client', version: '1.2.3' } } }, store);
+    await rpc({ jsonrpc: '2.0', id: 'p1', method: 'tools/call', params: { name: 'openmotion_open_preview', arguments: { target: 'providers' } } }, store);
+    await rpc({ jsonrpc: '2.0', id: 'p2', method: 'tools/call', params: { name: 'openmotion_open_preview', arguments: { target: 'providers', entry: 'agent_media_upgrade_free', presentation: 'now', embedded: false } } }, store);
+    const badProvider: any = await rpc({ jsonrpc: '2.0', id: 'p2b', method: 'tools/call', params: { name: 'openmotion_open_preview', arguments: { target: 'providers', projectId: 'project', entry: 'agent_media_upgrade_free' } } }, store);
+    assert.equal(badProvider.result.isError, true);
+    const badTemplate: any = await rpc({ jsonrpc: '2.0', id: 'p3', method: 'tools/call', params: { name: 'openmotion_open_preview', arguments: { target: 'templates', entry: 'agent_media_signed_out' } } }, store);
+    assert.equal(badTemplate.result.isError, true);
+    const badProject: any = await rpc({ jsonrpc: '2.0', id: 'p4', method: 'tools/call', params: { name: 'openmotion_open_preview', arguments: { target: 'project', action: 'begin', entry: 'agent_media_signed_out' } } }, store);
+    assert.equal(badProject.result.isError, true);
+
+    await tracking.flush();
+    const opened = events.filter(event => event.event === 'provider_setup_opened');
+    assert.equal(opened.length, 2);
+    assert.deepEqual(opened[0].properties, { entry_from: 'agent_providers', presentation: 'foreground', embedded: true });
+    assert.deepEqual(opened[1].properties, { entry_from: 'agent_media_upgrade_free', presentation: 'now', embedded: false });
+    assert.equal(opened[1].host_context?.host_agent, 'codex');
+    assert.equal(Object.hasOwn(studioEvents, 'provider_setup_opened'), false);
+    assert.equal(validProperties(studioEvents, 'page_view', { page_name: 'settings', view_id: crypto.randomUUID(), embedded: true, has_project: false, settings_section: 'providers', entry_from: 'agent_media_upgrade_go' }), true);
+    assert.equal(validProperties(studioEvents, 'ui_click', { page_name: 'settings', area: 'account', element: 'manage_subscription', entry_from: 'agent_media_upgrade_go' }), true);
+    assert.equal(validProperties(studioEvents, 'ui_click', { page_name: 'settings', area: 'account', element: 'manage_subscription', entry_from: 'PRIVATE_PROMPT' }), false);
+  } finally {
+    await running.close();
+    tracking.close();
+  }
+}));

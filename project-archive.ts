@@ -28,10 +28,13 @@ function checkedPath(name: string) {
   return name;
 }
 async function readBounded(filename: string, maximum: number = limits.bytes): Promise<Buffer> {
-  const handle = await open(filename, constants.O_RDONLY | constants.O_NOFOLLOW);
+  // The path comes from the caller. A FIFO or device node must fail fast instead of
+  // blocking the single serialized tool queue until a writer appears.
+  const handle = await open(filename, constants.O_RDONLY | constants.O_NOFOLLOW | (constants.O_NONBLOCK ?? 0));
   try {
     const info = await handle.stat();
-    if (!info.isFile() || info.size > maximum) throw new Error('PROJECT_ARCHIVE_TOO_LARGE: File exceeds the archive limit');
+    if (!info.isFile()) throw new Error('INVALID_PROJECT_ARCHIVE: Source must be a regular file');
+    if (info.size > maximum) throw new Error('PROJECT_ARCHIVE_TOO_LARGE: File exceeds the archive limit');
     const chunks: Buffer[] = []; let size = 0;
     for await (const chunk of handle.createReadStream({ autoClose: false })) {
       size += chunk.length; if (size > maximum) throw new Error('PROJECT_ARCHIVE_TOO_LARGE'); chunks.push(chunk);

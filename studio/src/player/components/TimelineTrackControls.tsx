@@ -34,10 +34,11 @@ export function TimelineTrackControls({ elements, track, number, label, hidden, 
   };
   const kind = identity?.kind || trackKind(elements), code = identity?.code || `${kind}${number || 1}`;
   const name = t('Track {number}' , { number: number ?? '' });
+  const kindLabel = t(identity?.isMain ? 'Main track' : identity?.label || 'Track');
   const lockLabel = t(locked ? 'Unlock track' : 'Lock track');
   return <div className="motion-track-controls" aria-label={name}
     onPointerDown={event => event.stopPropagation()} onClick={event => event.stopPropagation()}>
-    <Tooltip label={`${code} · ${t(identity?.label || 'Track')} · ${label}`} wrap><span className="motion-track-kind motion-track-badge" data-track-kind={kind} aria-label={`${code} · ${t(identity?.label || 'Track')}`}>
+    <Tooltip label={`${code} · ${kindLabel} · ${label}`} wrap><span className="motion-track-kind motion-track-badge" data-track-kind={kind} data-main-track={identity?.isMain || undefined} aria-label={`${code} · ${kindLabel}`}>
       {code}
     </span></Tooltip>
     <Tooltip label={lockLabel} wrap><button type="button" aria-label={`${lockLabel} · ${name}`}

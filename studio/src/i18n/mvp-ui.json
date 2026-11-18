@@ -1,5 +1,6 @@
 {
   "ja": {
+    "Main track": "メイントラック",
     "OpenMotion Sample Video": "OpenMotion サンプル動画",
     "Community": "コミュニティ",
     "Feishu group": "Feishu グループ",
@@ -320,6 +321,7 @@
     "Splitting clips inside a sub-composition is not supported in this editor.": "このエディターでは、サブコンポジション内のクリップの分割はサポートされていません。"
   },
   "ko": {
+    "Main track": "메인 트랙",
     "OpenMotion Sample Video": "OpenMotion 예제 영상",
     "Community": "커뮤니티",
     "Feishu group": "Feishu 그룹",
@@ -640,6 +642,7 @@
     "Splitting clips inside a sub-composition is not supported in this editor.": "이 편집기에서는 하위 컴포지션 내부의 클립 분할을 지원하지 않습니다."
   },
   "de": {
+    "Main track": "Hauptspur",
     "OpenMotion Sample Video": "OpenMotion-Beispielvideo",
     "Community": "Community",
     "Feishu group": "Feishu-Gruppe",
@@ -960,6 +963,7 @@
     "Splitting clips inside a sub-composition is not supported in this editor.": "Das Teilen von Clips innerhalb einer Unterkomposition wird in diesem Editor nicht unterstützt."
   },
   "fr": {
+    "Main track": "Piste principale",
     "OpenMotion Sample Video": "Vidéo d’exemple OpenMotion",
     "Community": "Communauté",
     "Feishu group": "Groupe Feishu",
@@ -1280,6 +1284,7 @@
     "Splitting clips inside a sub-composition is not supported in this editor.": "Cet éditeur ne permet pas de scinder les clips à l’intérieur d’une sous-composition."
   },
   "ru": {
+    "Main track": "Основная дорожка",
     "OpenMotion Sample Video": "Пример видео OpenMotion",
     "Community": "Сообщество",
     "Feishu group": "Группа Feishu",
@@ -1600,6 +1605,7 @@
     "Splitting clips inside a sub-composition is not supported in this editor.": "В этом редакторе нельзя разделять клипы внутри подкомпозиции."
   },
   "es": {
+    "Main track": "Pista principal",
     "OpenMotion Sample Video": "Vídeo de ejemplo de OpenMotion",
     "Community": "Comunidad",
     "Feishu group": "Grupo de Feishu",
@@ -1920,6 +1926,7 @@
     "Splitting clips inside a sub-composition is not supported in this editor.": "Este editor no permite dividir clips dentro de una subcomposición."
   },
   "pt-BR": {
+    "Main track": "Faixa principal",
     "OpenMotion Sample Video": "Vídeo de exemplo do OpenMotion",
     "Community": "Comunidade",
     "Feishu group": "Grupo do Feishu",
@@ -2240,6 +2247,7 @@
     "Splitting clips inside a sub-composition is not supported in this editor.": "Este editor não permite dividir clipes dentro de uma subcomposição."
   },
   "it": {
+    "Main track": "Traccia principale",
     "OpenMotion Sample Video": "Video di esempio OpenMotion",
     "Community": "Community",
     "Feishu group": "Gruppo Feishu",
@@ -2560,6 +2568,7 @@
     "Splitting clips inside a sub-composition is not supported in this editor.": "Questo editor non supporta la divisione di clip all’interno di una sottocomposizione."
   },
   "tr": {
+    "Main track": "Ana parça",
     "OpenMotion Sample Video": "OpenMotion Örnek Videosu",
     "Community": "Topluluk",
     "Feishu group": "Feishu grubu",

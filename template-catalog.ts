@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from 'node:fs';
-import { catalogTemplates, templatePage, isEditableTemplate } from './shared/catalog.ts';
+import { catalogTemplates, templatePage, isEditableTemplate, templateWorkflow } from './shared/catalog.ts';
 import type { GalleryTemplate } from './shared/catalog.ts';
 import { templates } from './template-library.ts';
 import { enrichTemplate } from './shared/template-metadata.ts';
@@ -31,7 +31,8 @@ export function getTemplate(id: string): GalleryTemplate {
   return template;
 }
 export function templateRecipe(template: GalleryTemplate) {
-  return `## ${template.kind === 'reference' ? '复刻参考' : '使用模板'}「${template.title}」
+  const workflow = templateWorkflow(template);
+  return `## ${workflow === 'recreate' ? '复刻参考' : '使用模板'}「${template.title}」
 
 用户已选定模板，直接使用模板原主题与默认内容开始；有新主题或素材时按用户要求替换。无需再确认模板或追问可选素材。
 
@@ -42,7 +43,7 @@ export function templateRecipe(template: GalleryTemplate) {
 - 参考画幅：${template.ratio || '读取素材或源码确认'}
 - 描述：${template.description || template.subtitle}
 ${template.previewUrl ? '- 参考视频：' + template.previewUrl + '\n' : ''}${template.posterUrl ? '- 参考封面：' + template.posterUrl + '\n' : ''}${template.sourceUrl ? '- 原始来源 / 源码清单：' + template.sourceUrl + '\n' : ''}
-通过安装的专业 Skill 或 resources/read openmotion://workflow/${template.kind === 'reference' ? 'recreate' : 'template'}/start，读取对应入口及共享 context；template 接入 openmotion-template-to-video，recreate 接入参考视频复刻流程（先读用户资料、最多问一次、在编辑器工程中重建并按数字测量核对）。沿用已选 ID 与本次范围，不返回 production/start 重做选路。先核对项目与已完成操作；原生编写前读取固定引擎指南 openmotion://engine/SKILL.md 与共享 native / production 规范。
+通过安装的专业 Skill 或 resources/read openmotion://workflow/${workflow}/start，读取对应入口及共享 context；template 接入 openmotion-template-to-video，recreate 接入参考视频复刻流程（先读用户资料、最多问一次、在编辑器工程中重建并按数字测量核对）。沿用已选 ID 与本次范围，不返回 production/start 重做选路。先核对项目与已完成操作；原生编写前读取固定引擎指南 openmotion://engine/SKILL.md 与共享 native / production 规范。
 Once the requested HTML output is ready, follow the shared native guide’s editable preview handoff automatically: call openmotion_open_preview({projectId}), then open its exact previewUrl in the host built-in browser before export or delivery. Preserve embed=1 and the project route; use sessionUrl for the full workspace.
 
 ${isEditableTemplate(template)
@@ -55,7 +56,7 @@ Use the returned native lint and actual preview to check the completed HTML; rep
 }
 export function readTemplate(id: string) {
   const template = getTemplate(id);
-  const workflow = template.kind === 'reference' ? 'recreate' : 'template';
+  const workflow = templateWorkflow(template);
   return { ...template, engine: 'hyperframes', instructions: templateRecipe(template),
     workflow: template.kind === 'builtin' ? 'openmotion_apply_template' : 'openmotion_import_asset + openmotion_write_files',
     workflowGuide: { workflow, section: 'start', status: workflowRegistry[workflow].status },

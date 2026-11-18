@@ -1,7 +1,6 @@
 import { useI18n } from "../i18n/I18n";
 import { usePlayerStore } from "../player";
 import { RemixIcon, Magnet } from "../icons/RemixIcons";
-import { RippleEditIcon } from "./icons/RippleEditIcon";
 import { Tooltip } from "./ui";
 import { flatActive, flatIdle } from "./timelineToolbarStyles";
 import { keyHint, useStudioKeys } from "../player/components/studioShortcuts";
@@ -44,7 +43,7 @@ export function TimelineBehaviorToggles() {
               aria-pressed={rippleEditEnabled}
               className={rippleEditEnabled ? flatActive : flatIdle}
             >
-              <RippleEditIcon size={16} />
+              <RemixIcon name="align-item-left-line" size={16} />
             </button>
           </Tooltip>
           <Tooltip label={t("Timeline linkage")}>

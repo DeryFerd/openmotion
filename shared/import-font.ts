@@ -19,7 +19,7 @@ export async function prepareImportedFont(staged: string, licensePath: string | 
     // argument from copying an unrelated readable file (keys, .env) into the project.
     if (path.dirname(path.resolve(licensePath)) !== path.dirname(path.resolve(fontPath)))
       throw new Error('FONT_LICENSE_NOT_BESIDE_FONT: place the licence next to the font file');
-    const handle = await open(licensePath, constants.O_RDONLY | constants.O_NOFOLLOW);
+    const handle = await open(licensePath, constants.O_RDONLY | constants.O_NOFOLLOW | (constants.O_NONBLOCK ?? 0));
     let bytes: Buffer;
     try {
       const info = await handle.stat();

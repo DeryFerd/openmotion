@@ -90,6 +90,21 @@ technical export can also close the same run with `host_run_delivered`. A failed
 cancelled export emits the corresponding host terminal event. These events do not
 claim a run boundary when the host did not provide a work-round ID.
 
+### Video generation, editing and export conversion
+
+`work_generation_stage` records `started`, `generated`, `edited` and `exported` with the same `work_id`, `project_id` and installation identity. The native work round owns the occurrence times. A deterministic event ID per work/stage deduplicates retry delivery, and work mutations use a cross-process lock.
+
+- `started` is emitted when a generation work round begins, before authoring. Export-only playback sets `generation:false`.
+- `generated` is emitted by `openmotion_open_preview(action=complete_generation)` immediately after the Agent produces the requested native video artifact. This action reads the current artifact, checks its version, authored content change, duration and native lint, and records completion independently of saving, preview or export. Direct filesystem authoring follows the same path.
+- `edited` is the first successful manual content edit or history step in Studio after generation. It is associated using the event's project and occurrence time. Project/asset renames, failed changes, Agent writes and asset-manager-only operations are excluded. The built-in project emits its fixed `project` identity alongside managed project UUIDs.
+- `exported` is the first successful export of that work. MCP uses the job's frozen work identity. Studio binds the most recent generated round of the same project when accepting a render and observes the persisted native completion in the backend, including when the tab closes. An unfinished newer generation prevents borrowing an earlier completion.
+
+Subsequent manual adjustments remain part of the same generated work until another generation round begins. A completed export keeps its original work even when another round starts. Generation version/revision identify the original completed artifact. Existing editor-save and asset-generation events retain their own meanings.
+
+For an observation date D in Asia/Shanghai, the daily cohort contains installations that began a generation on D-1. Each attempt has 24 hours from its start. Distinct installations with a generated artifact divide by distinct initiating installations. Distinct installations that subsequently edited the same generated work divide by generated installations. Export conversion uses that same denominator. Editing is optional for export. Weekly sets are unioned across seven start-date cohorts before division.
+
+Historical clients and work rounds without this protocol remain unavailable. The report should show “暂无数据” for uncovered dates and mixed-coverage weeks. Empty generated denominators mean no eligible sample. Generation failures with observed starts can yield a genuine 0% generation rate. Deployment of new clients and confirmation of event collection establish the reporting coverage date.
+
 Quality evidence is explicit. Technical export, preview visibility and recorded
 content review each emit `check_required` and `check_completed` with a version,
 checklist, checker type and bounded evidence reference. A technical export check
@@ -99,6 +114,27 @@ correctness incidents and recovery evidence use `incident_confirmed` and
 `recovery_recorded`; ordinary task failures are not incidents.
 
 ## Identity, properties and privacy
+
+`account_sign_in_result` reports each finished OpenDesign connector attempt with
+`source_product=openmotion`, `source_detail=openmotion_editor_login`, and an
+`entry_id` / `entry_occurred_at` pair created when the editor starts sign-in.
+Attempts replaced within that sign-in retain the entry pair while their
+`attempt_id` changes. A new explicit sign-in creates a new entry pair. Success
+is reported only after the connector completes credential acceptance and the
+local account setup finishes; browser opening or approval alone is not success.
+Successful completion also reports the confirmed account ID as `amr_user_id`,
+so account counts can deduplicate across installations and join AMR account facts.
+Failures and cancellations omit that ID. The existing collection controls apply;
+`distinct_id` remains the installation ID, without identify/alias or person merging.
+Email, names, activation URLs, authorization codes and credentials are omitted.
+These fields describe the local OM result; AMR handoff attribution is separate.
+
+The account and subscription settings' **Manage subscription** link carries
+`od_origin=openmotion`, `od_entry_source=openmotion_manage_subscription`, and a
+fresh `od_entry_id` / UTC `od_entry_at` for each primary or middle click. The link
+retains `billing=plan` and contains no account, installation or credential data.
+AMR must accept the OpenMotion origin and entry source in its attribution
+validation before these parameters can reach its subscription/payment events.
 
 One random `installation_id` UUID is persisted atomically in `tracking/identity.json`
 under each owned data directory, outside projects and versioned application caches.
@@ -138,8 +174,8 @@ WHERE timestamp >= now() - INTERVAL 2 DAY
 
 This measures OS-device identities, not people or immutable physical hardware. Shared
 machines count once, a person on two machines counts twice, cloned OS identifiers can
-collide, and an OS reinstall can change Windows/Linux identifiers. No account identity,
-MAC address, raw platform identifier or probabilistic fingerprint is sent. The package can
+collide, and an OS reinstall can change Windows/Linux identifiers. Device context contains
+no account identity, MAC address, raw platform identifier or probabilistic fingerprint. The package can
 initialize an identity with a validated source label; existing identities retain
 their first source. Landing-page attribution and installer `--source` plumbing are
 a separate change. Unknown source remains null.
@@ -198,6 +234,22 @@ their connection's token, project navigation preserves it, and another client
 cannot replace an existing association. A manually opened, expired, evicted or
 restarted page context reports `unknown`. No global last-used-host attribution is
 used. These tokens are metadata references, not authorization credentials.
+
+Provider-settings handoffs (`openmotion_open_preview` with `target=providers`)
+emit the MCP-only `provider_setup_opened` event on successful stdio MCP calls
+and append the validated `entry_from` parameter (`agent_providers` by default, or
+`agent_media_signed_out`, `agent_media_upgrade_free`, `agent_media_upgrade_go`,
+`agent_media_balance_low`, `agent_media_key_rejected`, `agent_media_handbook`) to
+the returned `previewUrl`. WebMCP/non-MCP HTTP calls neither emit
+`provider_setup_opened` nor attach `entry_from` to `previewUrl`, keeping funnel
+denominators and numerators aligned. Studio Settings propagates only recognized
+`entry_from` values onto Settings `page_view` and Settings `ui_click` events
+(including `account` sign-in and manage-subscription clicks) while inside
+Settings, and clears `entry_from` when navigating out of Settings (including to
+`brand-kit`, `mcp`, `assets`, `skills`, or the editor). Unknown `entry` values
+are rejected with `INVALID_ARGUMENT` on MCP calls, while Studio drops
+unrecognized URL `entry_from` values; neither side accepts prompts, account IDs
+or credentials.
 
 The research sources are the [supported MCP lifecycle](https://modelcontextprotocol.io/specification/2025-11-25/basic/lifecycle),
 [Codex's MCP client](https://github.com/openai/codex/blob/main/codex-rs/rmcp-client/src/utils.rs)

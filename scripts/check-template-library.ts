@@ -202,6 +202,17 @@ export function checkTemplateLibrary(cwd: string, base?: string, options: { fina
             'Source manifest mismatch: ' + file.path + '; run templates:manifest, then stage',
           );
         }
+        // entry.files is the published file identity consumers read, so it must stay equal
+        // to the source manifest instead of being validated for shape only.
+        for (const entry of record.entry.files ?? []) {
+          safePath(entry.path);
+          const expectedFile = sourceManifest.files.find((file: { path: string }) => file.path === entry.path);
+          assert(expectedFile, 'entry.files path is missing from the source manifest: ' + entry.path);
+          assert(
+            expectedFile.bytes === entry.bytes && expectedFile.sha256 === entry.sha256,
+            'entry.files identity is stale for ' + entry.path + '; update template.json entry.files to match the source manifest, then stage',
+          );
+        }
       } catch (error) {
         errors.push(`${id}: ${(error as Error).message}`);
       }

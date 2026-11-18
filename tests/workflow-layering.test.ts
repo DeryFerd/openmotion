@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { getWorkflow, readWorkflowResource, workflowDocumentAliases, workflowReferences } from '../shared/workflow.ts';
 
@@ -190,7 +190,7 @@ const withoutCode = (text: string) => text.replace(/^ {0,3}(`{3,}|~{3,})[^\n]*\n
 test('the media Skill serves every entry without naming any of them', async () => {
   for (const { file, text } of await skillMarkdown()) {
     if (!file.startsWith('openmotion-media/')) continue;
-    assert.doesNotMatch(text, /openmotion-(?:director|recreate|template-to-video|video-to-template|reference-video)\b|workflow\/(?:director|recreate|template|video-to-template)\//, file);
+    assert.doesNotMatch(text, /openmotion-(?:director|recreate|template-to-video|video-to-template)\b|workflow\/(?:director|recreate|template|video-to-template)\//, file);
   }
 });
 
@@ -241,7 +241,8 @@ test('each moved rule stays in its owner and entries link to it', async () => {
     for (const heading of headings) assert.ok(document.content.split('\n').includes(heading), `${section}: ${heading}`);
   }
   const jobs = await getWorkflow('jobs', 'media');
-  assert.deepEqual(jobs.references.filter(reference => reference.documentId.includes('/providers/')).map(reference => reference.section).sort(), ['account', 'atlascloud', 'compatible', 'fal', 'opendesign', 'wavespeed']);
+  const providerGuides = (await readdir(new URL('../skills/openmotion-media/references/providers/', import.meta.url))).filter(name => name.endsWith('.md')).map(name => 'skills/openmotion-media/references/providers/' + name).sort();
+  assert.deepEqual(jobs.references.filter(reference => reference.documentId.includes('/providers/')).map(reference => reference.documentId).sort(), providerGuides);
   const links = [
     ['recreate', 'templates', 'first-run-delivery'],
     ['template', 'templates', 'first-run-delivery'],

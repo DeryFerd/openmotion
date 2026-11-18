@@ -2,28 +2,10 @@ import https from "node:https";
 import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
 import { brotliDecompressSync, gunzipSync, inflateSync } from "node:zlib";
+import { isPublicAddress } from "./network.ts";
 
-export function publicBrandAddress(address: string): boolean {
-  if (isIP(address) === 4) {
-    const [a, b] = address.split(".").map(Number);
-    return (
-      a > 0 &&
-      a < 224 &&
-      ![10, 127].includes(a) &&
-      !(a === 169 && b === 254) &&
-      !(a === 172 && b >= 16 && b <= 31) &&
-      !(a === 192 && [0, 168].includes(b)) &&
-      !(a === 100 && b >= 64 && b <= 127) &&
-      !(a === 198 && [18, 19].includes(b))
-    );
-  }
-  return (
-    isIP(address) === 6 &&
-    /^[23][0-9a-f]{3}:/i.test(address) &&
-    !/^2001:(?:0:|db8:)/i.test(address) &&
-    !/^2002:/i.test(address)
-  );
-}
+// Brand capture and provider traffic must agree on what counts as a public address.
+export const publicBrandAddress = isPublicAddress;
 export function brandWebsite(raw: unknown): string {
   if (typeof raw !== "string" || !raw.trim() || raw.length > 2048)
     throw new Error("Enter a public HTTPS website");

@@ -8,7 +8,8 @@ import { fixture } from './fixtures.ts';
 import { transport } from './http.ts';
 import { ModelGateway, gatewayFor } from '../gateway/service.ts';
 import { classifyModel, discoverModels, normalizeModels } from '../gateway/catalog.ts';
-import { downloadMedia, mediaType, type Fetcher } from '../gateway/network.ts';
+import { downloadMedia, isPublicAddress, mediaType, providerOrigin, type Fetcher } from '../gateway/network.ts';
+import { publicBrandAddress, brandWebsite } from '../gateway/brand-network.ts';
 import { callTool } from '../mcp.ts';
 import { createTracker, validProperties, type PendingEvent } from '../tracking/core.ts';
 import { omEvents, studioEvents } from '../tracking/events.ts';
@@ -290,6 +291,18 @@ test('media import rejects non-public URLs, unexpected file signatures and wrong
   for (const url of ['http://example.com/file.png', 'https://127.0.0.1/file.png', 'https://user:pass@example.com/file.png', 'https://[::1]/image']) await assert.rejects(downloadMedia(url, new AbortController().signal));
   assert.throws(() => mediaType(png, 'video'), /valid video/);
   assert.deepEqual(await downloadMedia('data:image/png;base64,' + png.toString('base64'), new AbortController().signal), png);
+});
+
+test('gateway and brand capture share one public-address rule', () => {
+  for (const host of ['[2002:c000:204::1]', '[2001::1]', '[2001:db8::1]', '[2001:0:53aa:64c:0:0:0:1]', '198.18.0.1', '192.0.2.1', '192.0.0.1', '169.254.1.1'])
+    assert.throws(() => providerOrigin(`https://${host}/`), /public HTTPS gateway origin/);
+  for (const host of ['[2606:4700:4700::1111]', '192.0.78.1', '203.0.113.9'])
+    assert.ok(providerOrigin(`https://${host}/`), host);
+  for (const address of ['198.18.0.1', '192.0.2.1', '192.0.78.1', '2002:c000:204::1', '2001::1', '2001:db8::1', '10.0.0.1', '192.168.1.1', '2606:4700::1111'])
+    assert.equal(publicBrandAddress(address), isPublicAddress(address), address);
+  // brandWebsite resolves a concrete URL before capture, so it must keep working after the merge.
+  assert.equal(brandWebsite('https://example.com'), 'https://example.com/');
+  assert.throws(() => brandWebsite('https://127.0.0.1/'), /public HTTPS website/);
 });
 
 test('HTTP and MCP share settings, routes and job state without exposing keys or project data paths', () => fixture(async store => {

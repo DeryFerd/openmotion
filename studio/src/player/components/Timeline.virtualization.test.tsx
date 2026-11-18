@@ -424,17 +424,31 @@ describe("MVP centered track geometry", () => {
     </StudioHostContext.Provider>);
     try {
       const viewport = host.querySelector<HTMLElement>("[data-timeline-scroll-viewport]")!;
+      // The bottom visual track is the main track; its collapsed row is taller.
+      const rowHeights = [48, 48, 64];
+      const tracksHeight = 160;
       for (const height of [400, 560, 200]) {
         await act(async () => { clientHeight = height; for (const observer of resizeObservers) observer.resize(); });
-        const pad = Math.max(48, (height - 24 - 3 * 48) / 2);
+        const pad = Math.max(48, (height - 24 - tracksHeight) / 2);
         const lane = host.querySelector<HTMLElement>('[data-testid="timeline-ghost-lane"]')!;
-        expect(parseFloat(lane.style.top)).toBe(24 + pad + 3 * 48 + 3);
-        expect(onContentHeightChange.mock.calls.at(-1)?.[0]).toBe(24 + 48 + 3 * 48 + 48);
-        dragTimelineFixtureAsset(viewport, "dragover", 24 + pad + 48 + 24);
-        expect(host.querySelector<HTMLElement>('[data-testid="timeline-drop-preview"]')?.style.top).toBe(`${24 + pad + 48 + 3}px`);
-        dragTimelineFixtureAsset(viewport, "drop", 24 + pad + 48 + 24);
-        expect(onAssetDrop).toHaveBeenLastCalledWith("a.png", expect.objectContaining({ track: 1 }));
+        expect(parseFloat(lane.style.top)).toBe(24 + pad + tracksHeight + 3);
+        expect(onContentHeightChange.mock.calls.at(-1)?.[0]).toBe(24 + 48 + tracksHeight + 48);
+        for (const [track, rowHeight] of rowHeights.entries()) {
+          const rowTop = 24 + pad + track * 48;
+          act(() => usePlayerStore.getState().setSelectedElementId(`clip-${track}`));
+          const strip = host.querySelector<HTMLElement>('[style*="--timeline-accent-faint"]');
+          expect(strip?.style.top).toBe(`${rowTop + 3}px`);
+          expect(strip?.style.height).toBe(`${rowHeight - 6}px`);
+          dragTimelineFixtureAsset(viewport, "dragover", rowTop + rowHeight / 2);
+          const preview = host.querySelector<HTMLElement>('[data-testid="timeline-drop-preview"]');
+          expect(preview?.style.top).toBe(`${rowTop + 3}px`);
+          expect(preview?.style.height).toBe(`${rowHeight - 6}px`);
+          dragTimelineFixtureAsset(viewport, "drop", rowTop + rowHeight / 2);
+          expect(onAssetDrop).toHaveBeenLastCalledWith("a.png", expect.objectContaining({ track }));
+        }
       }
+      act(() => usePlayerStore.setState({ expandedClipIds: new Set(["clip-2"]) }));
+      expect(host.querySelector<HTMLElement>('[style*="--timeline-accent-faint"]')?.style.height).toBe("42px");
     } finally {
       act(() => root.unmount()); usePlayerStore.getState().reset();
       vi.stubEnv("VITE_STUDIO_TIMELINE_ROW_VIRTUALIZATION_ENABLED", "1"); vi.resetModules();

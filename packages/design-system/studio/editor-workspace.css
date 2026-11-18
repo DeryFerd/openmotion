@@ -64,3 +64,42 @@
 :root[data-motion-ui] .motion-timeline-ghost-lane { border: 0; border-radius: 0; border-bottom: 1px solid var(--timeline-row-border); color: var(--motion-muted); font-size: var(--motion-text-xs); }
 :root[data-motion-ui] .motion-timeline-ghost-lane[data-active] { background: var(--motion-accent-soft); box-shadow: inset 0 0 0 1px var(--motion-accent); color: var(--motion-accent); }
 :root[data-motion-ui] .motion-empty-timeline-lane { border-radius: 0; }
+
+/* Lock feedback spans the entire lane while leaving content and controls readable.
+   The local stacking context keeps the wash below sticky headers and the playhead. */
+:root[data-motion-ui] [data-track-locked] { isolation: isolate; }
+:root[data-motion-ui] [data-track-locked]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  pointer-events: none;
+  background: color-mix(in srgb, var(--motion-muted) 32%, transparent);
+}
+
+.motion-track-badge[data-main-track] { color: var(--motion-accent); background: var(--motion-accent-soft); }
+
+/* Timeline toggles share icon scale and ink; their background conveys on/off. */
+:root[data-motion-ui] .motion-timeline-toolbar.motion-timeline-icon-controls button {
+  width: var(--motion-space-28);
+  height: var(--motion-space-28);
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--motion-radius-md);
+  color: var(--motion-strong);
+  background: transparent;
+}
+:root[data-motion-ui] .motion-timeline-toolbar.motion-timeline-icon-controls button > svg:first-child {
+  width: var(--motion-icon);
+  height: var(--motion-icon);
+  flex: none;
+}
+:root[data-motion-ui] .motion-timeline-toolbar.motion-timeline-icon-controls button.motion-timeline-tool-picker { width: auto; min-width: var(--motion-space-28); padding-inline: var(--motion-space-4); }
+:root[data-motion-ui] .motion-timeline-toolbar.motion-timeline-icon-controls button:hover:enabled { background: var(--motion-hover); }
+:root[data-motion-ui] .motion-timeline-toolbar.motion-timeline-icon-controls button[aria-pressed="true"]:enabled { background: var(--motion-chrome-active); }
+:root[data-motion-ui] .motion-timeline-toolbar.motion-timeline-icon-controls button:disabled { color: var(--motion-control-disabled); background: transparent; opacity: 1; }
+:root[data-motion-ui] .motion-timeline-toolbar.motion-timeline-icon-controls button:enabled { color: var(--motion-strong); }
+/* Full-editor recording and current-keyframe indicators carry semantic state. */
+:root[data-motion-ui] .motion-timeline-toolbar.motion-timeline-icon-controls button.text-danger-ink:enabled { color: var(--motion-danger); }
+:root[data-motion-ui] .motion-timeline-toolbar.motion-timeline-icon-controls button.text-accent-ink:enabled { color: var(--motion-accent); }

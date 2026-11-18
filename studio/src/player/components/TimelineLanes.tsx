@@ -359,6 +359,7 @@ export function TimelineLanes({
                 role="gridcell"
                 aria-colindex={2}
                 data-timeline-zoom-scale=""
+                data-track-locked={els.some(element => element.timelineLocked) || undefined}
                 style={{
                   width: trackContentWidth,
                   marginLeft: contentGutter, // room for a 0% diamond left of t=0

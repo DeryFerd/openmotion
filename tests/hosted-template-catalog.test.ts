@@ -60,6 +60,7 @@ test('hosted catalog reads the moving main pointer and serves content-addressed 
   const detail = await catalog.detail(id);
   assert.equal(detail.instructions, '# Hosted instructions\n');
   assert.equal(detail.motionDocument.content, '# Hosted motion\n');
+  assert.equal(detail.workflowGuide.workflow, 'recreate', 'a guidance package without index.html is recreated');
   assert.equal((await catalog.sourceFile(id, 'motion.md')).toString(), '# Hosted motion\n');
   assert.deepEqual(await catalog.sourceFile(id, 'project.bin'), binary);
   const afterFirstSourceRead = calls.length;
