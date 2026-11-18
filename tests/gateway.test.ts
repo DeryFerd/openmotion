@@ -294,7 +294,11 @@ test('provider JSON stops reading at the response size cap', async () => {
   let pulled = 0, cancelled = false;
   const chunk = new Uint8Array(1024 * 1024).fill(120);
   const stream = new ReadableStream<Uint8Array>({
-    pull(controller) { pulled += chunk.length; controller.enqueue(chunk); },
+    pull(controller) {
+      // A buffering regression must finish draining and fail an assertion, not exhaust memory.
+      if (pulled >= 32 * 1024 * 1024) { controller.close(); return; }
+      pulled += chunk.length; controller.enqueue(chunk);
+    },
     cancel() { cancelled = true; },
   });
   const oversized: Fetcher = async () => new Response(stream, { status: 200 });
