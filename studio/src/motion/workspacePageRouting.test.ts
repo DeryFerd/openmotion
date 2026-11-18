@@ -49,3 +49,24 @@ it('preserves a Brand Kit selection behind template browsing and clears it when 
   expect(readWorkspacePage(next.search)).toMatchObject({ settings: 'brand-kit', brandKit: 'one', templates: true });
   expect(workspacePageHref(next.href, { settings: null, templates: false })).toBe('/?embed=1#project/retained');
 });
+
+it('keeps entry_from while switching settings sections and clears it when leaving settings', () => {
+  const source = 'http://localhost/?page=settings&section=providers&entry_from=agent_media_upgrade_go&embed=1';
+  const account = new URL(workspacePageHref(source, { settings: 'account' }), source);
+  expect(account.searchParams.get('section')).toBe('account');
+  expect(account.searchParams.get('entry_from')).toBe('agent_media_upgrade_go');
+  const subscription = new URL(workspacePageHref(account.href, { settings: 'subscription' }), source);
+  expect(subscription.searchParams.get('entry_from')).toBe('agent_media_upgrade_go');
+  const brandKit = new URL(workspacePageHref(subscription.href, { settings: 'brand-kit' }), source);
+  expect(brandKit.searchParams.has('entry_from')).toBe(false);
+  expect(new URL(workspacePageHref(brandKit.href, { settings: 'account' }), source).searchParams.has('entry_from')).toBe(false);
+  const mcp = new URL(workspacePageHref(subscription.href, { settings: 'mcp' }), source);
+  expect(mcp.searchParams.has('entry_from')).toBe(false);
+  expect(new URL(workspacePageHref(mcp.href, { settings: 'account' }), source).searchParams.has('entry_from')).toBe(false);
+  const assets = new URL(workspacePageHref(subscription.href, { assets: true }), source);
+  expect(assets.searchParams.has('entry_from')).toBe(false);
+  const skills = new URL(workspacePageHref(subscription.href, { skills: true }), source);
+  expect(skills.searchParams.has('entry_from')).toBe(false);
+  const closed = new URL(workspacePageHref(subscription.href, { settings: null }), source);
+  expect(closed.searchParams.has('entry_from')).toBe(false);
+});

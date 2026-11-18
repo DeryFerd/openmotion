@@ -3,7 +3,7 @@
  * Shared playhead visual used by TimelineCanvas (real playhead) and
  * TimelineEditorNotice (animated illustration).
  *
- * The vertical line + glow span the full track height; the grab-handle HEAD is
+ * The vertical line spans the full track height; the grab-handle HEAD is
  * `position: sticky; top: 0` so it pins to the top of the (vertically) scrolling
  * track area — the ruler is sticky too, so the head stays visible and grabbable
  * no matter how far the tracks are scrolled. The solid head points down to the line.
@@ -12,13 +12,13 @@ import { TimelinePlayheadMark } from "../../../../packages/design-system/react/T
 import { PLAYHEAD_HEAD_W } from "./timelineLayout";
 
 /** Widest part of the playhead, centred on its line. */
-export const PLAYHEAD_GLOW_W = 13;
+export const PLAYHEAD_MARK_W = 13;
 
 interface PlayheadIndicatorProps {
   /** CSS color, defaults to the HF accent variable */
   color?: string;
-  /** Glow shadow color, defaults to translucent accent */
-  glowColor?: string;
+  /** Surface behind the pinned head; must match the timeline ruler. */
+  headBackground?: string;
   /** Whether the playhead is being actively scrubbed. */
   scrubbing?: boolean;
   /**
@@ -30,12 +30,12 @@ interface PlayheadIndicatorProps {
 
 export function PlayheadIndicator({
   color = "var(--timeline-accent)",
-  glowColor = "var(--timeline-playhead-glow)",
+  headBackground = "var(--timeline-shell-bg)",
   scrubbing = false,
   stickyHead = true,
 }: PlayheadIndicatorProps) {
   // Keep the existing wrapper width and time-origin math. The wider marker is
-  // centered inside the same glow envelope, with its tip meeting the line.
+  // centered on the same time coordinate, with its tip meeting the line.
   const HEAD_W = PLAYHEAD_HEAD_W;
   const HEAD_H = 15;
   const HEAD_INSET = 2;
@@ -43,27 +43,15 @@ export function PlayheadIndicator({
 
   return (
     <>
-      {/* Glow — spans full height, centered on the line. */}
-      <div
-        aria-hidden="true"
-        className="absolute top-0 bottom-0"
-        style={{
-          left: "50%",
-          width: PLAYHEAD_GLOW_W,
-          transform: "translateX(-50%)",
-          background: `radial-gradient(closest-side, ${glowColor}, transparent)`,
-        }}
-      />
       {/* Vertical line begins at the marker tip. */}
       <div
         className="absolute bottom-0"
         style={{
           left: "50%",
           top: HEAD_TOTAL_H,
-          width: 1,
-          marginLeft: -0.5,
+          width: 2,
+          marginLeft: -1,
           background: color,
-          boxShadow: `0 0 6px ${glowColor}`,
         }}
       />
       {/* Head chip — sticky so it pins to the ruler while tracks scroll.
@@ -81,15 +69,16 @@ export function PlayheadIndicator({
           width: HEAD_W,
           height: HEAD_TOTAL_H,
           // The line scrolls behind the pinned head. Mask it above the lower
-          // tip so scrolling never paints the line above the marker.
-          background: stickyHead ? "var(--timeline-shell-bg)" : undefined,
+          // tip so scrolling never paints the line above the marker. Match the
+          // ruler surface so the mask does not leave a contrasting rectangle.
+          background: stickyHead ? headBackground : undefined,
         }}
       >
         <TimelinePlayheadMark
           data-scrubbing={scrubbing || undefined}
-          width={PLAYHEAD_GLOW_W}
+          width={PLAYHEAD_MARK_W}
           height={HEAD_H}
-          style={{ position: "absolute", top: HEAD_INSET, left: (HEAD_W - PLAYHEAD_GLOW_W) / 2, color }}
+          style={{ position: "absolute", top: HEAD_INSET, left: (HEAD_W - PLAYHEAD_MARK_W) / 2, color }}
         />
       </div>
     </>

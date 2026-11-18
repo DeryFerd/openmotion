@@ -13,6 +13,7 @@ import { AudioMeterStrip } from "./nle/AudioMeterStrip";
 import { TimelineToolbar } from "./TimelineToolbar";
 import { StudioHostContext } from "../motion/StudioHost";
 import { registerTimelineZoomViewport } from "../player/components/timelineZoomInput";
+import { readFileSync } from "node:fs";
 
 vi.mock("../contexts/StudioContext", () => ({
   useStudioShellContextOptional: () => ({
@@ -520,6 +521,36 @@ describe("TimelineToolbar history", () => {
 });
 
 describe("TimelineToolbar tool menu", () => {
+  it.each(["light", "dark"])("keeps the secondary caret compact and lets its trigger grow in %s theme", theme => {
+    const html = document.documentElement;
+    const previousMotionUi = html.getAttribute("data-motion-ui");
+    const previousTheme = html.getAttribute("data-theme");
+    html.setAttribute("data-motion-ui", "");
+    html.setAttribute("data-theme", theme);
+    const style = document.createElement("style");
+    style.textContent = [
+      "../../../packages/design-system/tokens.css",
+      "../../../packages/design-system/studio/editor-workspace.css",
+      "../motion/theme.css",
+    ].map(path => readFileSync(new URL(path, import.meta.url), "utf8")).join("\n");
+    document.head.append(style);
+    const { host, root } = renderToolbar();
+    try {
+      const trigger = host.querySelector<HTMLButtonElement>('button[aria-label^="Timeline tool:"]')!;
+      const [primary, caret] = trigger.querySelectorAll("svg");
+      expect(getComputedStyle(primary).width).toBe("16px");
+      expect(caret.getAttribute("width")).toBe("10");
+      expect(getComputedStyle(caret).width).not.toBe("16px");
+      expect(getComputedStyle(trigger).width).toBe("auto");
+    } finally {
+      act(() => root.unmount());
+      style.remove();
+      for (const [name, value] of [["data-motion-ui", previousMotionUi], ["data-theme", previousTheme]]) {
+        if (value === null) html.removeAttribute(name!); else html.setAttribute(name!, value!);
+      }
+    }
+  });
+
   async function openMenuRows(props: Partial<React.ComponentProps<typeof TimelineToolbar>>) {
     const { host, root } = renderToolbar(undefined, props);
     const trigger = host.querySelector<HTMLButtonElement>('button[aria-label^="Timeline tool:"]')!;

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { chmod, mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { archivePaths, privacyFindings, scanSource, scanPackage, unpackChecked } from '../.github/scripts/motion-scan.mjs';
+import { archivePaths, privacyFindings, scanSource, scanPackage, scanPluginPackage, unpackChecked } from '../.github/scripts/motion-scan.mjs';
 import { candidateFixture } from './release-fixture.mjs';
 import { runFile, sha256, writeJSON } from '../scripts/runtime-assets.mjs';
 
@@ -118,4 +118,15 @@ test('the scanner opens the nested application, rejects hidden private content a
   await symlink('package.json', path.join(f.app, 'linked')); const linked = path.join(f.work, 'linked.tar.gz');
   await runFile('tar', ['-czf', linked, '-C', f.app, '.']);
   await assert.rejects(unpackChecked(linked, path.join(f.work, 'extracted')), /links and special/);
+});
+
+test('DSH release scanning inspects the plugin bytes and rejects private bundled content', async t => {
+  const f = await candidateFixture(t, 'main', { dsh: true }), tool = await scanner(t);
+  const archive = path.join(f.build, `openmotion-dsh-${f.candidate.version}.tgz`);
+  const report = await scanPluginPackage(archive, tool.binary);
+  assert.equal(report.version, f.candidate.version);
+  assert.equal(report.tgzSHA256, await sha256(archive));
+  await writeFile(path.join(f.work, 'dsh/package/private.md'), 'https://' + 'workspace.feishu.cn/wiki/private');
+  await runFile('tar', ['-czf', archive, '-C', path.join(f.work, 'dsh'), 'package']);
+  await assert.rejects(scanPluginPackage(archive, tool.binary), /internal-link/);
 });

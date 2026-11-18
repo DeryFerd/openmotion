@@ -246,7 +246,7 @@ export const TimelineToolbar = memo(function TimelineToolbar({
   }, []);
 
   return (
-    <div className="motion-timeline-toolbar border-b border-neutral-800/60">
+    <div className="motion-timeline-toolbar motion-timeline-icon-controls border-b border-neutral-800/60">
       <div className="flex items-center justify-between px-2 py-0.5">
         <div className="flex items-center gap-0.5">
           {showHistory && <TimelineHistoryButtons {...history} />}

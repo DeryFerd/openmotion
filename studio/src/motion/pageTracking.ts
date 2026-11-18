@@ -2,6 +2,7 @@
 // same page_name + area + element convention as the template library, so the funnels read alike.
 // The pages call these and own no tracking code of their own; nothing here may throw into them.
 import { slug } from '../../../tracking/core.ts';
+import { providerSetupEntries, type ProviderSetupEntry } from '../../../tracking/events.ts';
 import type { BrandKit } from '../../../shared/brand-kit';
 import type { MotionSkill, SkillParameters } from './skillCatalog';
 import { embeddedView, newTrackingId, optionId, searchKeyword, send, slugField, type Fields } from './reporting';
@@ -13,7 +14,7 @@ const shell = (hasProject: boolean) => ({ view_id: newTrackingId(), embedded: em
 
 // ---------- Skills ----------
 const skills = { page_name: 'skills' } as const;
-const CATEGORY = { 'Product promos': 'product_promos', Explainers: 'explainers', 'Brand & covers': 'brand_covers', 'Motion techniques': 'motion_techniques' } as const;
+const CATEGORY = { 'Talking-head & editing': 'talking_head', 'Product promos': 'product_promos', Explainers: 'explainers', 'Product ads': 'product_ads', 'Brand & covers': 'brand_covers', 'Motion techniques': 'motion_techniques' } as const;
 export const skillCategoryId = (category: MotionSkill['category']) => CATEGORY[category];
 /** A catalogue id is sent only when it is a bounded slug; anything else is left out, never rewritten. */
 const skillFields = (skill: MotionSkill) => ({ ...slugField('skill_id', skill.id), skill_category: skillCategoryId(skill.category) });
@@ -192,13 +193,21 @@ const PROVIDER_ACTIONS: Record<string, ProviderAction> = {
 };
 export const providerAction = (message: string): ProviderAction | undefined => PROVIDER_ACTIONS[message];
 
+export function settingsEntryFrom(): ProviderSetupEntry | undefined {
+  if (typeof window === 'undefined') return undefined;
+  const value = new URLSearchParams(window.location.search).get('entry_from');
+  return (providerSetupEntries as readonly string[]).includes(value ?? '') ? value as ProviderSetupEntry : undefined;
+}
+
 export function reportSettingsPageView(section: SettingsSectionField, hasProject: boolean) {
-  send('page_view', { ...settingsPage, ...shell(hasProject), settings_section: section });
+  const entry = settingsEntryFrom();
+  send('page_view', { ...settingsPage, ...shell(hasProject), settings_section: section, ...(entry ? { entry_from: entry } : {}) });
 }
 export function reportSettingsClick(area: SettingsClickArea, element: Click['element'],
   fields: Pick<Click, 'settings_section' | 'expanded' | 'position'> & { provider?: { id: string; custom?: boolean; protocol?: string }; agent?: string } = {}) {
   const { provider, agent, ...rest } = fields;
-  send('ui_click', { ...settingsPage, area, element, ...rest, ...(provider ? providerFields(provider) : {}), ...slugField('agent_id', agent) });
+  const entry = settingsEntryFrom();
+  send('ui_click', { ...settingsPage, area, element, ...rest, ...(entry ? { entry_from: entry } : {}), ...(provider ? providerFields(provider) : {}), ...slugField('agent_id', agent) });
 }
 export function reportProviderSetting(provider: { id: string; custom?: boolean; protocol?: string }, action: ProviderAction, outcome: 'success' | 'failure') {
   send('provider_setting_result', { ...settingsPage, ...providerFields(provider), action, outcome });

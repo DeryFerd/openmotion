@@ -1,9 +1,9 @@
 import { useEffect, useRef, type ReactNode, type RefObject } from "react";
-import { PLAYHEAD_GLOW_W } from "./PlayheadIndicator";
+import { PLAYHEAD_MARK_W } from "./PlayheadIndicator";
 
 // Keep the header boundary clipped even during scrolling. Update only this layer's
 // style, without re-rendering the timeline or its clips on every scroll frame.
-// Half the glow may pass the edge so the head at 00:00 remains fully visible.
+// Half the marker may pass the edge so the head at 00:00 remains fully visible.
 export function TimelinePlayheadLayer({
   scrollRef,
   contentOrigin,
@@ -20,7 +20,7 @@ export function TimelinePlayheadLayer({
     const layer = layerRef.current;
     if (!scroll || !layer) return;
     const syncClip = () => {
-      layer.style.clipPath = `inset(0 0 0 ${scroll.scrollLeft + contentOrigin - PLAYHEAD_GLOW_W / 2}px)`;
+      layer.style.clipPath = `inset(0 0 0 ${scroll.scrollLeft + contentOrigin - PLAYHEAD_MARK_W / 2}px)`;
     };
     syncClip();
     scroll.addEventListener("scroll", syncClip, { passive: true });
@@ -33,7 +33,7 @@ export function TimelinePlayheadLayer({
       className="absolute inset-0 pointer-events-none"
       style={{
         zIndex: 100,
-        clipPath: `inset(0 0 0 ${contentOrigin - PLAYHEAD_GLOW_W / 2}px)`,
+        clipPath: `inset(0 0 0 ${contentOrigin - PLAYHEAD_MARK_W / 2}px)`,
       }}
     >
       {children}

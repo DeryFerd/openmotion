@@ -29,16 +29,16 @@ export async function retryRead<T>(read: () => Promise<T>, signal: AbortSignal, 
     }
   }
 }
-export async function apiJson(fetcher: Fetcher, url: string, init: RequestInit = {}) {
-  // The production transport buffers a response before resolving, so the bound has to apply there
-  // as well; otherwise the cap below runs after the allocation it is meant to prevent.
+export async function apiJson(fetcher: Fetcher, url: string, init: RequestInit = {}, limits: { timeoutMs?: number; maxBytes?: number } = {}) {
+  const maxBytes = limits.maxBytes ?? MAX_JSON_BYTES;
+  // The production transport buffers before resolving, so enforce the same cap there.
   const bounded: Fetcher = fetcher === publicProviderFetch
-    ? (input, requestInit) => publicProviderFetch(input, requestInit ?? {}, 60_000, MAX_JSON_BYTES)
+    ? (input, requestInit) => publicProviderFetch(input, requestInit ?? {}, 60_000, maxBytes)
     : fetcher;
-  const response = await bounded(url, { ...init, redirect: 'error', signal: init.signal ? AbortSignal.any([init.signal, AbortSignal.timeout(30_000)]) : AbortSignal.timeout(15_000) });
+  const response = await bounded(url, { ...init, redirect: 'error', signal: init.signal ? AbortSignal.any([init.signal, AbortSignal.timeout(limits.timeoutMs ?? 30_000)]) : AbortSignal.timeout(limits.timeoutMs ?? 15_000) });
   // Do not forward provider response text: it may echo a key or user input.
   if (!response.ok) throw new ProviderError(`Provider HTTP ${response.status}${response.status === 401 || response.status === 403 ? ': credentials or permissions rejected' : ''}`, response.status);
-  const body = await readCappedText(response, MAX_JSON_BYTES);
+  const body = await readCappedText(response, maxBytes);
   try { return JSON.parse(body); } catch { throw new Error('Provider returned invalid JSON'); }
 }
 // Stop reading as soon as the peer exceeds the cap instead of buffering the whole body first.
@@ -52,7 +52,7 @@ export async function readCappedText(response: Response, maximum: number): Promi
       if (done) break;
       if (!value) continue;
       size += value.byteLength;
-      if (size > maximum) throw new Error('Provider response exceeds 16 MB');
+      if (size > maximum) throw new Error(`Provider response exceeds ${maximum / 1024 / 1024} MB`);
       chunks.push(value);
     }
   } finally { await reader.cancel().catch(() => {}); }

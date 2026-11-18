@@ -4,6 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { runFile, sha256, writeJSON } from '../scripts/runtime-assets.mjs';
 import { sealCandidate, repository, candidateWorkflow, publicationWorkflow, authorizationReceipt, candidateNoteIdentity } from '../.github/scripts/motion-release.mjs';
+import { downloadOrigin, downloadPrefix } from '../integrations/dsh/download.ts';
 
 export async function candidateFixture(t, branch = 'main', options = {}) {
   const work = await mkdtemp(path.join(os.tmpdir(), 'motion-release-test-'));
@@ -33,13 +34,24 @@ export async function candidateFixture(t, branch = 'main', options = {}) {
   const env = { MOTION_RELEASE_CHANNEL: channel, MOTION_SOURCE_SHA: commit, MOTION_VERSION: version, GITHUB_SHA: 'b'.repeat(40),
     GITHUB_WORKFLOW_REF: `${repository}/${candidateWorkflow}@refs/heads/${branch}`, GITHUB_RUN_ID: '123', GITHUB_RUN_ATTEMPT: '1' };
   await writeFile(path.join(build, 'release-notes.md'), `## Changes\n\nFrozen candidate changes\n\n${candidateNoteIdentity({ version, sourceCommit: commit, tgzSHA256: await sha256(tgz) })}\n`);
+  if (options.dsh) {
+    const plugin = path.join(work, 'dsh/package');
+    await mkdir(plugin, { recursive: true });
+    await writeJSON(path.join(plugin, 'package.json'), { name: 'openmotion-dsh', version, private: true });
+    const filename = path.join(build, `openmotion-dsh-${version}.tgz`);
+    await runFile('tar', ['-czf', filename, '-C', path.dirname(plugin), 'package']);
+    const digest = await sha256(filename);
+    await writeJSON(path.join(build, 'dsh-plugin.json'), { schemaVersion: 1, name: 'openmotion-dsh', version, dshVersion: '0.2.2-rc.1', sourceCommit: commit,
+      sha256: digest, bytes: (await readFile(filename)).length, tarballUrl: `${downloadOrigin}/${downloadPrefix}/snapshots/${commit}/${digest}/openmotion-dsh.tgz` });
+    await writeJSON(path.join(build, 'dsh-package-scan.json'), { status: 'passed', version, tgzSHA256: digest });
+  }
   const candidate = await sealCandidate(build, directory, root, env);
   const provenance = { head_branch: branch, head_sha: env.GITHUB_SHA, runId: 123, attempt: 1 };
   await writeJSON(path.join(directory, 'provenance.json'), provenance);
   const inputs = { action: 'publish-' + channel, channel, version, expectedSHA256: candidate.tgzSHA256 };
   const publicationEnv = { GITHUB_REPOSITORY: repository, GITHUB_EVENT_NAME: 'workflow_dispatch', GITHUB_REF: 'refs/heads/main',
     GITHUB_RUN_ID: '800', GITHUB_SHA: env.GITHUB_SHA, GITHUB_WORKFLOW_REF: `${repository}/${publicationWorkflow}@refs/heads/main`,
-    MOTION_VERSION: version, MOTION_RELEASE_CHANNEL: channel, MOTION_RELEASE_ACTION: inputs.action };
+    MOTION_VERSION: version, MOTION_RELEASE_CHANNEL: channel, MOTION_RELEASE_ACTION: inputs.action, MOTION_EXPECTED_SHA256: candidate.tgzSHA256 };
   const authorization = authorizationReceipt(candidate, { id: 800, run_attempt: 1, actor: { login: 'operator' } }, inputs.action);
   await writeJSON(path.join(directory, 'authorization.json'), authorization);
   for (const platform of ['darwin-arm64', 'win32-x64']) await writeJSON(path.join(directory, `registry-${platform}.json`), {

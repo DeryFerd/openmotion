@@ -5,10 +5,10 @@ import { createRoot } from "react-dom/client";
 import type { GsapAnimation } from "@hyperframes/core/gsap-parser";
 import { afterEach, describe, expect, it } from "vitest";
 import { usePlayerStore, type TimelineElement } from "../store/playerStore";
-import { LANE_H, TRACK_H } from "./timelineLayout";
+import { LANE_H, TRACK_H, MAIN_TRACK_H } from "./timelineLayout";
 import { AUTOMATION_LANE_H } from "./automationLaneHeight";
 import { getTimelinePropertyLanes } from "./TimelinePropertyLanes";
-import { resolveTrackKeyframeClip, useTimelineTrackLayout } from "./useTimelineTrackLayout";
+import { mainTrackRowHeights, resolveTrackKeyframeClip, useTimelineTrackLayout } from "./useTimelineTrackLayout";
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -316,4 +316,18 @@ describe("resolveTrackKeyframeClip", () => {
     );
     expect(picked).toBe(b);
   });
+});
+
+
+it("enlarges only the main row and preserves expanded lane geometry", () => {
+  const clip = (id: string, track: number, tag = "video"): TimelineElement =>
+    ({ id, tag, track, start: 0, duration: 3 });
+  const tracks: [number, TimelineElement[]][] = [
+    [0, [clip("overlay", 0)]], [1, [clip("main", 1)]], [2, [clip("audio", 2, "audio")]],
+  ];
+  expect(mainTrackRowHeights(tracks, [TRACK_H, TRACK_H, TRACK_H], new Set()))
+    .toEqual([TRACK_H, MAIN_TRACK_H, TRACK_H]);
+  const expanded = [TRACK_H, TRACK_H + LANE_H + AUTOMATION_LANE_H, TRACK_H];
+  expect(mainTrackRowHeights(tracks, expanded, new Set(["main"]))).toEqual(expanded);
+  expect(mainTrackRowHeights([[2, tracks[2]![1]]], [TRACK_H], new Set())).toEqual([TRACK_H]);
 });
