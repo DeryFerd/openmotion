@@ -24,12 +24,16 @@ const button = (label: string) => [...container.querySelectorAll('button')].find
 it('lists every curated skill with its upstream repository', () => {
   act(() => root.render(<Host />));
   expect(container.querySelectorAll('.om-skill-gallery-card')).toHaveLength(motionSkills.length);
-  expect(motionSkills).toHaveLength(26);
+  expect(motionSkills).toHaveLength(122);
   expect(motionSkills[0].id).toBe('motionmaxxing');
   expect(motionSkills[1].id).toBe('openmotion-growth-teardown');
   for (const skill of motionSkills) if (skill.repository) expect(skill.repository).toMatch(/^https:\/\/github\.com\/[\w.-]+\/[\w.-]+(\/tree\/main\/[\w.-]+)?$/);
-  // Only Skills authored in this repository omit an upstream repository.
-  expect(motionSkills.filter(skill => !skill.repository).map(skill => skill.id)).toEqual(['openmotion-growth-teardown']);
+  // Skills without an upstream repository are OpenMotion Library Skills (library/skills/<id>).
+  for (const skill of motionSkills) if (!skill.repository) expect(skill.id).toMatch(/^openmotion-[a-z0-9-]+$/);
+  expect(motionSkills.filter(skill => !skill.repository)).toHaveLength(97);
+  // The upstream Skills keep their place right after the first two; presenter-style cards are spread out, never side by side.
+  expect(motionSkills.slice(2, 26).every(skill => skill.repository)).toBe(true);
+  expect(motionSkills.some((skill, i) => i > 0 && skill.category === 'Talking-head & editing' && motionSkills[i - 1].category === 'Talking-head & editing')).toBe(false);
   expect(new Set(motionSkills.map(skill => skill.id)).size).toBe(motionSkills.length);
 });
 
@@ -53,7 +57,7 @@ it('filters by category and search', () => {
   expect(container.querySelectorAll('.om-skill-gallery-card').length).toBe(motionSkills.filter(skill => skill.category === 'Explainers').length);
   act(() => button('All').click());
   const input = container.querySelector<HTMLInputElement>('input[type="search"]')!;
-  act(() => { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, 'particle'); input.dispatchEvent(new Event('input', { bubbles: true })); });
+  act(() => { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, 'proton'); input.dispatchEvent(new Event('input', { bubbles: true })); });
   expect([...container.querySelectorAll('.om-skill-gallery-card strong')].map(node => node.textContent)).toEqual(['Particle effects']);
 });
 
@@ -160,7 +164,9 @@ it('does not select a failed command after its popover has closed', async () => 
 });
 
 it('localizes every Skills string and instruction in all supported languages', async () => {
-  const { default: skillsUi } = await import('../i18n/skills-ui.json');
+  const { default: skillsCore } = await import('../i18n/skills-ui.json');
+  const { default: skillLibrary } = await import('../i18n/skill-library');
+  const skillsUi = Object.fromEntries(Object.entries(skillsCore).map(([locale, messages]) => [locale, { ...messages, ...skillLibrary[locale] }])) as Record<string, Record<string, string>>;
   const { default: prompts } = await import('./skill-prompts.json');
   const { languages } = await import('../i18n/messages');
   const placeholders = (text: string) => [...text.matchAll(/\{\w+\}/g)].map(match => match[0]).sort();
@@ -212,4 +218,26 @@ it('opens the contribution guide section for submitting a skill, like the templa
   expect(section).toContain('library/skills/<name>/SKILL.md');
   expect(section).toContain('nexu-io/openmotion');
   expect(section).toContain('draft pull request');
+});
+
+it('bundles the GIF covers as local assets', () => {
+  for (const id of ['anime-js', 'lottie-web']) {
+    const gif = motionSkills.find(skill => skill.id === id)?.cover?.gif;
+    expect(gif, id).toBeDefined();
+    expect(gif, id).not.toMatch(/^https?:/);
+  }
+});
+
+it('falls back to the poster when a cover video cannot load', () => {
+  act(() => root.render(<Host />));
+  const card = container.querySelector('[data-skill-id="motionmaxxing"]')!;
+  const videos = [...card.querySelectorAll('video')];
+  expect(videos.length).toBeGreaterThan(0);
+  act(() => videos.forEach(node => node.dispatchEvent(new Event('error'))));
+  expect(card.querySelector('.om-skill-cover')).toBeNull();
+  expect(card.querySelectorAll('img').length).toBe(videos.length);
+});
+
+it('serves no cover video from raw GitHub, which sends it as an undecodable octet-stream', () => {
+  expect(motionSkills.filter(skill => skill.cover?.video?.includes('raw.githubusercontent.com')).map(skill => skill.id)).toEqual([]);
 });

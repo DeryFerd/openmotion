@@ -1,11 +1,13 @@
 import type { Entry, Registry } from './core.ts';
 import { studioUsageEvents } from './studio-events.ts';
+import { providerSetupEntries, type ProviderSetupEntry } from '../shared/workspace-url.ts';
+export { providerSetupEntries, type ProviderSetupEntry };
 
 export const toolNames = ['motion_assets', 'motion_media_use', 'motion_list_templates', 'motion_get_template', 'motion_create_project', 'motion_open_preview',
   'motion_import_assets', 'motion_get_project', 'motion_edit_project', 'motion_export_request', 'motion_list_versions',
   'motion_restore_version', 'motion_export_cancel', 'motion_project_archive', 'motion_manage_project'] as const;
 const outcome = ['success', 'failure', 'partial', 'cancelled', 'unknown'] as const;
-export const assetActions = ['list', 'get', 'import', 'update', 'generate', 'jobs', 'status', 'cancel', 'retry_save', 'resume', 'import_to_project', 'read', 'brand_kit', 'transcript'] as const;
+export const assetActions = ['list', 'get', 'import', 'update', 'generate', 'jobs', 'status', 'cancel', 'retry_save', 'resume', 'import_to_project', 'read', 'brand_kit', 'transcript', 'voice'] as const;
 export function assetToolAction(tool: string, input: unknown): typeof assetActions[number] | undefined {
   if (!['openmotion_assets_use', 'openmotion_assets', 'motion_assets_use', 'motion_assets'].includes(tool)) return;
   const action = input && typeof input === 'object' && 'action' in input ? input.action : undefined;
@@ -21,7 +23,7 @@ export const webMcpToolNames = ['openmotion_assets_use', 'openmotion_assets', 'o
 const webMcp = { tool_name: webMcpToolNames, transport: ['webmcp'] } as const;
 const generation = { modality: ['image', 'video', 'audio'] } as const;
 // Studio project ids are UUIDs except the built-in local project, whose id is the literal `project`.
-const project = { project_id: 'uuid', project_scope: ['default', 'managed', 'other'] } as const;
+const project = { project_id: 'project_id', project_scope: ['default', 'managed', 'other'] } as const;
 const exportSettings = { origin: ['header', 'export_panel', 'composition_card'], format: ['mp4', 'webm', 'mov', 'gif'],
   quality: ['draft', 'standard', 'high'], resolution: ['auto', '1080p', '4k'], fps: ['24', '30', '60', 'other'] } as const;
 const countBucket = ['0', '1_5', '6_20', '21_50', 'gt_50', 'unknown'] as const;
@@ -42,7 +44,7 @@ const templateList = { result_count: 'integer', search_id: 'uuid', sort: sortOrd
 // Application pages that report their own views and clicks. The template library keeps page_name=studio.
 const pages = ['home', 'studio', 'skills', 'brand_kit', 'mcp', 'assets', 'settings', 'projects'] as const;
 // Workspace assets: which shelf the library shows and what kind of media an action is about.
-const assetKind = ['all', 'image', 'video', 'audio', 'trash'] as const;
+const assetKind = ['all', 'image', 'video', 'audio', 'voice', 'trash'] as const;
 const modality = ['image', 'video', 'audio'] as const;
 // Settings sections as routed in the workspace; providers and Agents are named by their built-in ids only.
 const settingsSection = ['account', 'subscription', 'providers', 'models', 'local', 'general', 'appearance', 'privacy', 'about', 'help', 'mcp', 'brand-kit'] as const;
@@ -52,9 +54,10 @@ const workspacePages = { asset_kind: assetKind, modality, task_mode: ['direct', 
 // MCP connection page: which Agent client tab is shown, how the user reached the page and how they set it up.
 const mcpClient = ['codex', 'claude', 'cursor', 'deepseek', 'desktop', 'chatgpt', 'mcp'] as const;
 const mcpEntry = ['app_rail', 'settings_general', 'settings_resources', 'home_composer', 'project_composer', 'project_agent', 'platform_export', 'asset_chat', 'direct_link'] as const;
+const entryFrom = [...mcpEntry, ...providerSetupEntries] as const;
 const mcp = { mcp_client: mcpClient, setup_method: ['agent', 'manual'], capability_id: 'slug' } as const;
 // A Skill is identified by its catalogue id and group only; the brief text never leaves the browser.
-const skill = { skill_id: 'slug', skill_category: ['product_promos', 'explainers', 'brand_covers', 'motion_techniques'] } as const;
+const skill = { skill_id: 'slug', skill_category: ['talking_head', 'product_promos', 'explainers', 'product_ads', 'brand_covers', 'motion_techniques'] } as const;
 const skillBrief = { duration_seconds: 'integer', aspect_ratio: ['16:9', '9:16', '1:1'], has_subject: 'boolean', has_style: 'boolean', media_required: 'boolean' } as const;
 // A Brand Kit is identified only by its official catalogue id; a user's own kit, website, name and context never become fields.
 const brand = { brand_source: ['official', 'mine'], catalog_id: 'slug' } as const;
@@ -92,12 +95,18 @@ export const omEvents = {
   export_result: { producers: ['worker'], fields: { job_id: 'uuid', job_state: ['completed', 'failed', 'cancelled'], duration_ms: 'integer', technical_check: ['passed', 'failed', 'unknown'] }, required: ['job_id', 'job_state', 'duration_ms', 'technical_check'] },
   // One per finished OpenDesign sign-in attempt. `replaced` is an interrupted attempt the service refused; the same
   // sign-in continues with a new attempt. Times are milliseconds since the click. Stage values come from the connector
-  // protocol; activation links, codes, identities and credentials are never fields.
+  // protocol; only confirmed account IDs are allowed, never links, authorization codes or credentials.
   account_sign_in_result: { producers: ['mcp'], fields: { attempt_id: 'uuid', outcome: ['success', 'failure', 'cancelled', 'replaced'],
+    source_product: ['openmotion'], source_detail: ['openmotion_editor_login'], entry_id: 'uuid', entry_occurred_at: 'timestamp', amr_user_id: 'code',
     error_code: ['connector_unavailable', 'setup_failed', 'authorization_expired', 'credentials_rejected'], connector_version: 'code', resumed: 'boolean',
     last_stage: accountStages, last_result: ['started', 'success', 'failed'], error_kind: accountErrorKinds, browser_opened: 'boolean',
     receipt: ['accepted', 'rejected'], exit_code: 'integer', duration_ms: 'integer', prepare_ms: 'integer', link_ms: 'integer', approved_ms: 'integer' },
     required: ['attempt_id', 'outcome', 'connector_version', 'resumed', 'duration_ms'] },
+  work_generation_stage: { producers: ['mcp', 'worker'], fields: {
+    work_id: 'uuid', project_id: 'code', stage: ['started', 'generated', 'edited', 'exported'],
+    task_type: ['create', 'modify'], version_id: 'code', revision: 'code',
+    export_route: ['mcp', 'studio'],
+  }, required: ['work_id', 'project_id', 'stage', 'task_type'] },
   host_run_started: { producers: ['mcp'], fields: { run_id: 'uuid', entry_type: ['mcp'], task_type: ['create', 'modify'], delivery_mode: ['preview', 'technical_export'] }, required: ['run_id', 'entry_type', 'task_type'] },
   host_run_delivered: { producers: ['mcp', 'worker'], fields: { run_id: 'uuid', delivery_mode: ['preview', 'technical_export'], project_id: 'code', revision: 'code', delivery_evidence_ref: 'code' }, required: ['run_id', 'delivery_mode', 'project_id', 'revision'] },
   host_run_failed: { producers: ['mcp', 'worker'], fields: { run_id: 'uuid', task_type: ['create', 'modify'], error_code: 'code', stage: 'code' }, required: ['run_id', 'task_type', 'error_code'] },
@@ -113,7 +122,9 @@ export const omEvents = {
   worker_heartbeat: { producers: ['worker'], fields: { collector_id: 'uuid', instance_id: 'uuid', active: 'boolean', queue_count: 'integer' }, required: ['collector_id', 'instance_id', 'active', 'queue_count'] },
   incident_confirmed: { producers: ['mcp', 'worker'], fields: { incident_id: 'uuid', incident_type: ['false_success', 'duplicate_charge', 'content_loss', 'cross_project_write', 'wrong_version_delivery', 'other'], severity: ['sev1', 'sev2', 'sev3'], subject_id: 'code', evidence_ref: 'code' }, required: ['incident_id', 'incident_type', 'severity', 'subject_id'] },
   recovery_recorded: { producers: ['mcp', 'worker'], fields: { incident_id: 'uuid', test_case_id: 'code', fault_type: 'code', data_integrity: ['preserved', 'lost', 'unknown'], duplicate_charge_check: ['clear', 'found', 'unknown'], recovery_result: ['success', 'failure', 'unknown'] }, required: ['incident_id', 'test_case_id', 'fault_type', 'data_integrity', 'duplicate_charge_check', 'recovery_result'] },
-  page_view: { producers: ['studio'], fields: { page_name: pages, view_id: 'uuid', embedded: 'boolean', has_project: 'boolean', brand_collection: brandCollection, entry_from: mcpEntry, mcp_client: mcpClient, settings_section: settingsSection }, required: ['page_name', 'view_id', 'embedded', 'has_project'] },
+  page_view: { producers: ['studio'], fields: { page_name: pages, view_id: 'uuid', embedded: 'boolean', has_project: 'boolean', brand_collection: brandCollection, entry_from: entryFrom, mcp_client: mcpClient, settings_section: settingsSection }, required: ['page_name', 'view_id', 'embedded', 'has_project'] },
+  provider_setup_opened: { producers: ['mcp'], fields: { entry_from: providerSetupEntries, presentation: ['foreground', 'background', 'now'], embedded: 'boolean' },
+    required: ['entry_from', 'presentation', 'embedded'] },
   studio_load_result: { producers: ['studio'], fields: { load_id: 'uuid', outcome, duration_ms: 'integer', embedded: 'boolean', ...project, ...projectScale, ...template }, required: ['load_id', 'outcome', 'duration_ms', 'embedded'] },
   ui_click: { producers: ['studio'], fields: { page_name: pages,
     area: ['workspace', 'templates', 'template_card', 'template_detail', 'template_instruction', 'template_discovery',
@@ -158,7 +169,7 @@ export const omEvents = {
     copy_attempt_id: 'uuid', download_attempt_id: 'uuid',
     filter_group: ['brand', 'uses', 'styles', 'industries', 'creationModels', 'colors', 'ratio', 'duration', 'editable'], filter_value: 'slug',
     selected: 'boolean', expanded: 'boolean', previous_sort: sortOrder, changed: 'boolean', ...templateDetail, ...templateList,
-    ...skill, ...brand, brand_collection: brandCollection, ...mcp,
+    ...skill, ...brand, brand_collection: brandCollection, ...mcp, entry_from: entryFrom,
     doc_id: ['mcp_tools', 'skills', 'agent_adapters', 'docs_home', 'repository'], section_id: 'slug', faq_index: 'integer', ...workspacePages },
     required: ['page_name', 'area', 'element'] },
   // Studio UI exports run in the editor's own render pipeline, not the worker that owns export_result.

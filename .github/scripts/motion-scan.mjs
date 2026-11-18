@@ -7,7 +7,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { download, runFile, sha256, writeJSON } from '../../scripts/runtime-assets.mjs';
-import { releaseTemplateEnvironment } from '../../scripts/release-version.mjs';
+import { checkReleaseVersion, releaseTemplateEnvironment } from '../../scripts/release-version.mjs';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 export const scannerVersion = '8.30.1';
@@ -161,12 +161,24 @@ export async function scanPackage(tgz, binary) {
   } finally { await rm(work, { recursive: true, force: true }); }
 }
 
+export async function scanPluginPackage(tgz, binary) {
+  const work = await mkdtemp(path.join(os.tmpdir(), 'motion-dsh-scan-'));
+  try {
+    await unpackChecked(tgz, work);
+    const pkg = JSON.parse(await readFile(path.join(work, 'package/package.json')));
+    assert.equal(pkg.name, 'openmotion-dsh');
+    checkReleaseVersion(pkg.version);
+    return { ...await scanTree(work, 'package', binary), version: pkg.version, tgzSHA256: await sha256(tgz) };
+  } finally { await rm(work, { recursive: true, force: true }); }
+}
+
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const [command, input, output, binary] = process.argv.slice(2);
   if (command === 'install') console.log(await installScanner(path.resolve(input)));
   else {
-    assert(['source', 'package'].includes(command) && input && output && binary, 'Usage: motion-scan.mjs source|package <input> <report> <gitleaks>');
-    await writeJSON(output, await (command === 'source' ? scanSource(path.resolve(input), binary) : scanPackage(path.resolve(input), binary)));
+    assert(['source', 'package', 'plugin'].includes(command) && input && output && binary, 'Usage: motion-scan.mjs source|package|plugin <input> <report> <gitleaks>');
+    const scan = { source: scanSource, package: scanPackage, plugin: scanPluginPackage }[command];
+    await writeJSON(output, await scan(path.resolve(input), binary));
     console.log('Release content scan passed');
   }
 }

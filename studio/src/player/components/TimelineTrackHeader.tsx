@@ -19,7 +19,7 @@ import { elementFxChain, groupAutomationLanes, isCarveLane } from "./automationL
 import { AUTOMATION_LANE_H } from "./automationLaneHeight";
 import { clipTimingStart } from "../../hooks/gsapShared";
 import { LaneToggleButton, LayerDisclosureRow } from "./LayerDisclosureRow";
-import { LABEL_COL_W, TRACK_H, getTimelineLaneTop } from "./timelineLayout";
+import { LABEL_COL_W, TRACK_H, MAIN_TRACK_H, getTimelineLaneTop } from "./timelineLayout";
 import type { TimelineTheme } from "./timelineTheme";
 import { trackDisplaySuffix } from "./timelineTrackDisplay";
 import { AutomationLaneHeaderRow, PropertyGroupHeaderRow } from "./trackHeaderLabelRows";
@@ -299,7 +299,7 @@ export function TimelineTrackHeader({
       }}
     >
       {mvp ? (
-        <div className="motion-track-controls-row" style={{ height: TRACK_H }}>
+        <div className="motion-track-controls-row" style={{ height: identity?.isMain && !isExpanded ? MAIN_TRACK_H : TRACK_H }}>
           <TimelineTrackControls identity={identity} elements={trackElements} track={trackNumber} number={trackDisplayNumber}
             label={trackLabel} hidden={isTrackHidden} audioOnly={isAudioOnly} toggleHidden={onToggleTrackHidden}>
             {disclosable && <LaneToggleButton name={laneOwnerName} isExpanded={isExpanded}

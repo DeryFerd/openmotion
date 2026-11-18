@@ -72,9 +72,9 @@
     "Product promos from shot recipes.": "用镜头配方做产品宣传片。",
     "Follow its product-promo workflow: capture real product pages, pick shot recipe cards, storyboard, cut to the beat with sound design and check every frame. Build it as native OpenMotion HTML instead of Remotion.": "照它的产品宣传片流程：截取真实产品页面、挑选镜头配方卡、分镜、按节拍剪辑并配音效、逐帧检查。用 OpenMotion 原生 HTML 实现，不用 Remotion。",
     "A promo for my product built from real page screenshots": "用真实页面截图做一支产品宣传片",
-    "Product promos": "产品宣传",
-    "Explainers": "讲解视频",
-    "Brand & covers": "品牌与封面",
+    "Product promos": "科技产品发布",
+    "Explainers": "知识讲解",
+    "Brand & covers": "品牌活动与封面",
     "Motion techniques": "动效技巧",
     "Studio and lifestyle product shots.": "棚拍和生活场景产品图。",
     "Follow its product-photoshoot modes (studio, lifestyle, hero banner, floating/splash, seasonal variation) to generate product stills, then animate them into a short product reel with camera moves and captions.": "照它的产品拍摄模式（棚拍、生活场景、首屏横幅、悬浮/飞溅、季节变体）生成产品图，再加镜头运动和字幕做成一段产品短片。",
@@ -118,7 +118,7 @@
     "A lit 3D product turntable or scene with smooth camera paths": "一段带光照的 3D 产品转台或场景，镜头平滑移动",
     "A particle effect such as confetti bursts or an ambient background": "一段粒子效果，例如彩纸迸发或氛围背景",
     "You get": "做出来的是",
-    "Product promo": "产品宣传片",
+    "Product promo": "新功能上线短片",
     "Listing video": "电商详情视频",
     "Faceless explainer": "无人出镜讲解",
     "Brand intro": "品牌片头",
@@ -154,7 +154,7 @@
     "After": "改后",
     "Remove the AI look from motion": "动效去 AI 味",
     "When a motion video looks templated or AI-made and you want it to feel designer-made": "做好的动效片看着像模板、有 AI 味，想改得像设计师做的",
-    "When launching a product or feature and you have real page screenshots": "新产品、新功能上线，手上有真实页面截图，要做宣传片",
+    "When launching a product or feature and you have real page screenshots": "新产品、新功能上线，手上有真实页面截图",
     "When you have a product and need studio, lifestyle and banner shots in one reel": "有一个实物产品，需要棚拍、生活场景、横幅几种画面",
     "When listing a product on Amazon, Taobao or another store": "商品要上架亚马逊、淘宝等电商平台，需要详情页视频",
     "When you want to explain a topic or tell a story without filming anyone": "要讲清一个知识点或讲个故事，但不想真人出镜",
@@ -189,7 +189,9 @@
     "Follow the OpenMotion growth-teardown Skill: research dated growth moves and metric points with their sources, write growth.json, collect real page screenshots and video thumbnails, then generate the nine-scene film. Every number on screen must cite its source.": "按 OpenMotion 增长拆解 Skill 执行：搜集带出处的增长动作和指标点，写成 growth.json，抓取真实网页截图和视频封面，再生成九幕视频。画面上每个数字都要注明出处。",
     "How Lovable grew in its first two years": "Lovable 头两年是怎么增长的",
     "Growth reverse-engineering": "增长逆向拆解",
-    "OpenMotion skill": "OpenMotion Skill"
+    "OpenMotion skill": "OpenMotion Skill",
+    "Product ads": "消费品带货",
+    "Talking-head & editing": "口播与剪辑"
   },
   "ja": {
     "Skills": "Skills",
@@ -381,7 +383,9 @@
     "Follow the OpenMotion growth-teardown Skill: research dated growth moves and metric points with their sources, write growth.json, collect real page screenshots and video thumbnails, then generate the nine-scene film. Every number on screen must cite its source.": "OpenMotion の成長分析 Skill に従ってください：日付付きの成長施策と指標を出典ごとに調べて growth.json に書き、実際のページのスクリーンショットと動画サムネイルを集め、9シーンの動画を生成します。画面上の数字にはすべて出典を示してください。",
     "How Lovable grew in its first two years": "Lovable は最初の2年でどう成長したか",
     "Growth reverse-engineering": "成長のリバースエンジニアリング",
-    "OpenMotion skill": "OpenMotion の Skill"
+    "OpenMotion skill": "OpenMotion の Skill",
+    "Product ads": "商品広告",
+    "Talking-head & editing": "トーク・編集"
   },
   "ko": {
     "Skills": "Skills",
@@ -573,7 +577,9 @@
     "Follow the OpenMotion growth-teardown Skill: research dated growth moves and metric points with their sources, write growth.json, collect real page screenshots and video thumbnails, then generate the nine-scene film. Every number on screen must cite its source.": "OpenMotion 성장 분석 Skill을 따르세요: 날짜가 있는 성장 전략과 지표를 출처와 함께 조사해 growth.json에 쓰고, 실제 페이지 스크린샷과 영상 썸네일을 모은 뒤 9개 장면의 영상을 생성합니다. 화면의 모든 숫자에는 출처를 밝혀야 합니다.",
     "How Lovable grew in its first two years": "Lovable은 첫 2년 동안 어떻게 성장했나",
     "Growth reverse-engineering": "성장 역설계",
-    "OpenMotion skill": "OpenMotion Skill"
+    "OpenMotion skill": "OpenMotion Skill",
+    "Product ads": "상품 광고",
+    "Talking-head & editing": "토킹헤드·편집"
   },
   "ru": {
     "Skills": "Skills",
@@ -765,7 +771,9 @@
     "Follow the OpenMotion growth-teardown Skill: research dated growth moves and metric points with their sources, write growth.json, collect real page screenshots and video thumbnails, then generate the nine-scene film. Every number on screen must cite its source.": "Следуйте Skill разбора роста OpenMotion: соберите датированные шаги роста и точки метрики с источниками, запишите growth.json, соберите скриншоты реальных страниц и обложки видео, затем создайте фильм из девяти сцен. У каждого числа на экране должен быть источник.",
     "How Lovable grew in its first two years": "Как Lovable рос в первые два года",
     "Growth reverse-engineering": "Обратный разбор роста",
-    "OpenMotion skill": "Skill OpenMotion"
+    "OpenMotion skill": "Skill OpenMotion",
+    "Product ads": "Реклама товаров",
+    "Talking-head & editing": "Ведущий и монтаж"
   },
   "de": {
     "Skills": "Skills",
@@ -957,7 +965,9 @@
     "Follow the OpenMotion growth-teardown Skill: research dated growth moves and metric points with their sources, write growth.json, collect real page screenshots and video thumbnails, then generate the nine-scene film. Every number on screen must cite its source.": "Folge dem OpenMotion-Skill zur Wachstumsanalyse: recherchiere datierte Wachstumsschritte und Kennzahlen mit Quellen, schreibe growth.json, sammle Screenshots echter Seiten und Video-Thumbnails und erzeuge dann den Film mit neun Szenen. Jede Zahl im Bild braucht eine Quelle.",
     "How Lovable grew in its first two years": "Wie Lovable in den ersten zwei Jahren gewachsen ist",
     "Growth reverse-engineering": "Wachstum rückwärts analysiert",
-    "OpenMotion skill": "OpenMotion-Skill"
+    "OpenMotion skill": "OpenMotion-Skill",
+    "Product ads": "Produktwerbung",
+    "Talking-head & editing": "Sprecher & Schnitt"
   },
   "fr": {
     "Skills": "Skills",
@@ -1149,7 +1159,9 @@
     "Follow the OpenMotion growth-teardown Skill: research dated growth moves and metric points with their sources, write growth.json, collect real page screenshots and video thumbnails, then generate the nine-scene film. Every number on screen must cite its source.": "Suivez le Skill d’analyse de croissance d’OpenMotion : recherchez les actions de croissance datées et les points de l’indicateur avec leurs sources, écrivez growth.json, collectez des captures de vraies pages et des miniatures vidéo, puis générez le film en neuf scènes. Chaque chiffre à l’écran doit citer sa source.",
     "How Lovable grew in its first two years": "Comment Lovable a grandi pendant ses deux premières années",
     "Growth reverse-engineering": "Rétro-ingénierie de la croissance",
-    "OpenMotion skill": "Skill OpenMotion"
+    "OpenMotion skill": "Skill OpenMotion",
+    "Product ads": "Pubs produit",
+    "Talking-head & editing": "Face caméra et montage"
   },
   "es": {
     "Skills": "Skills",
@@ -1341,7 +1353,9 @@
     "Follow the OpenMotion growth-teardown Skill: research dated growth moves and metric points with their sources, write growth.json, collect real page screenshots and video thumbnails, then generate the nine-scene film. Every number on screen must cite its source.": "Sigue el Skill de análisis de crecimiento de OpenMotion: investiga acciones de crecimiento fechadas y puntos de la métrica con sus fuentes, escribe growth.json, reúne capturas de páginas reales y miniaturas de video y luego genera el video de nueve escenas. Cada número en pantalla debe citar su fuente.",
     "How Lovable grew in its first two years": "Cómo creció Lovable en sus dos primeros años",
     "Growth reverse-engineering": "Ingeniería inversa del crecimiento",
-    "OpenMotion skill": "Skill de OpenMotion"
+    "OpenMotion skill": "Skill de OpenMotion",
+    "Product ads": "Anuncios de producto",
+    "Talking-head & editing": "Presentador y edición"
   },
   "pt-BR": {
     "Skills": "Skills",
@@ -1533,7 +1547,9 @@
     "Follow the OpenMotion growth-teardown Skill: research dated growth moves and metric points with their sources, write growth.json, collect real page screenshots and video thumbnails, then generate the nine-scene film. Every number on screen must cite its source.": "Siga a Skill de análise de crescimento do OpenMotion: pesquise ações de crescimento datadas e pontos da métrica com fontes, escreva growth.json, reúna capturas de páginas reais e miniaturas de vídeo e depois gere o vídeo de nove cenas. Todo número na tela precisa citar a fonte.",
     "How Lovable grew in its first two years": "Como a Lovable cresceu nos dois primeiros anos",
     "Growth reverse-engineering": "Engenharia reversa do crescimento",
-    "OpenMotion skill": "Skill do OpenMotion"
+    "OpenMotion skill": "Skill do OpenMotion",
+    "Product ads": "Anúncios de produto",
+    "Talking-head & editing": "Apresentador e edição"
   },
   "it": {
     "Skills": "Skill",
@@ -1725,7 +1741,9 @@
     "Follow the OpenMotion growth-teardown Skill: research dated growth moves and metric points with their sources, write growth.json, collect real page screenshots and video thumbnails, then generate the nine-scene film. Every number on screen must cite its source.": "Segui la Skill di analisi della crescita di OpenMotion: ricerca le mosse di crescita datate e i punti della metrica con le fonti, scrivi growth.json, raccogli screenshot di pagine reali e miniature video, poi genera il video in nove scene. Ogni numero sullo schermo deve citare la fonte.",
     "How Lovable grew in its first two years": "Come è cresciuta Lovable nei primi due anni",
     "Growth reverse-engineering": "Reverse engineering della crescita",
-    "OpenMotion skill": "Skill di OpenMotion"
+    "OpenMotion skill": "Skill di OpenMotion",
+    "Product ads": "Annunci prodotto",
+    "Talking-head & editing": "Presentatore e montaggio"
   },
   "tr": {
     "Skills": "Skill’ler",
@@ -1917,6 +1935,8 @@
     "Follow the OpenMotion growth-teardown Skill: research dated growth moves and metric points with their sources, write growth.json, collect real page screenshots and video thumbnails, then generate the nine-scene film. Every number on screen must cite its source.": "OpenMotion büyüme analizi Skill’ini izle: tarihli büyüme hamlelerini ve metrik noktalarını kaynaklarıyla araştır, growth.json dosyasını yaz, gerçek sayfa ekran görüntüleri ve video küçük resimleri topla, ardından dokuz sahnelik videoyu oluştur. Ekrandaki her sayının kaynağı belirtilmeli.",
     "How Lovable grew in its first two years": "Lovable ilk iki yılında nasıl büyüdü",
     "Growth reverse-engineering": "Büyümede tersine mühendislik",
-    "OpenMotion skill": "OpenMotion Skill’i"
+    "OpenMotion skill": "OpenMotion Skill’i",
+    "Product ads": "Ürün reklamları",
+    "Talking-head & editing": "Kamera karşısı ve kurgu"
   }
 }

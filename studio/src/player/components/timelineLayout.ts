@@ -7,6 +7,7 @@ export const GUTTER = 32;
 export const LABEL_COL_W = 232;
 export const MVP_LABEL_COL_W = 132;
 export const TRACK_H = 48;
+export const MAIN_TRACK_H = 64;
 export const LANE_H = 28;
 export const RULER_H = 24;
 export const CLIP_Y = 3;

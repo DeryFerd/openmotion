@@ -10,7 +10,8 @@ import { runFile, sha256, writeJSON } from '../../scripts/runtime-assets.mjs';
 import { checkReleaseVersion, comparePublicationVersions, releaseTemplateEnvironment, testVersion } from '../../scripts/release-version.mjs';
 import { generateInstallGuide } from '../../scripts/install-guide.mjs';
 import { publishGuide, storagePlan } from './publish-install-guide.mjs';
-import { scanPackage, scanSource } from './motion-scan.mjs';
+import { scanPackage, scanSource, scanPluginPackage } from './motion-scan.mjs';
+import { pluginCandidateFiles, verifyCandidatePlugin } from '../../integrations/dsh/candidate.ts';
 
 export const repository = 'nexu-io/openmotion';
 export const candidateWorkflow = '.github/workflows/motion-candidate.yml';
@@ -108,8 +109,13 @@ export async function sealCandidate(build, output, source, env = process.env) {
   assert(/^[1-9]\d*$/.test(env.GITHUB_RUN_ID || '') && /^[1-9]\d*$/.test(env.GITHUB_RUN_ATTEMPT || ''));
   const filename = manifest.installer.url.replace(/^\.\//, '');
   assert.equal(filename, `openmotion-app-${manifest.version}.tgz`);
+  let hasPlugin = false;
+  try { await readFile(path.join(build, 'dsh-plugin.json')); hasPlugin = true; }
+  catch (error) { if (error.code !== 'ENOENT') throw error; }
+  const pluginFiles = hasPlugin ? pluginCandidateFiles(manifest.version) : [];
+  if (hasPlugin) await verifyCandidatePlugin(build, manifest.version, manifest.commit);
   await mkdir(output, { recursive: true });
-  for (const name of [filename, 'release-npm.json', 'source-scan.json', 'package-scan.json', 'release-notes.md']) await cp(path.join(build, name), path.join(output, name));
+  for (const name of [filename, 'release-npm.json', 'source-scan.json', 'package-scan.json', 'release-notes.md', ...pluginFiles]) await cp(path.join(build, name), path.join(output, name));
   const guide = await generateInstallGuide(path.join(output, filename), output);
   assert.equal(guide.packageName, '@openmotion/app'); assert.equal(guide.commit, env.MOTION_SOURCE_SHA);
   for (const name of ['source-scan.json', 'package-scan.json']) assert.equal((await json(path.join(output, name))).status, 'passed');
@@ -123,15 +129,16 @@ export async function sealCandidate(build, output, source, env = process.env) {
   const installTemplate = await readFile(new URL('../../docs/templates/candidate-install.md', import.meta.url), 'utf8');
   const values = { VERSION: guide.version, TGZ: filename, SHA256: identity.tgzSHA256, SOURCE_SHA: guide.commit,
     TEMPLATE_ENVIRONMENT: guide.templateEnvironment,
+    DSH_INSTRUCTIONS: hasPlugin ? `## Optional DSH acceptance\n\nOnly when DSH testing is requested, use the included \`openmotion-dsh-${guide.version}.tgz\` and \`dsh-plugin.json\`. They share this candidate's version and source commit. Follow https://github.com/${repository}/blob/${guide.commit}/integrations/dsh/README.md using a separate built source checkout at that commit and an isolated DSH profile/data directory. Install this local tarball instead of downloading a moving channel. Preserve existing installations and credentials. The plugin is not a standalone runtime; npm/MCP acceptance does not establish native DSH acceptance.\n` : '',
     DETAILS_URL: `https://github.com/${repository}/blob/${guide.commit}/docs/npm-installation.md` };
   const instructions = installTemplate.replace(/\{\{([A-Z0-9_]+)\}\}/g, (_, key) => { assert(Object.hasOwn(values, key)); return values[key]; });
   assert(!instructions.includes('{{'), 'Unresolved candidate instructions');
   await writeFile(path.join(output, 'candidate-install.md'), instructions);
   const notes = await readFile(path.join(output, 'release-notes.md'), 'utf8');
   assert(Buffer.byteLength(notes) <= 1024 * 1024 && notes.includes(candidateNoteIdentity({ ...identity, version: manifest.version })), 'Candidate notes identity mismatch');
-  const names = [filename, 'release-npm.json', 'source-scan.json', 'package-scan.json', 'install.md', 'install-record.json', 'acceptance.md', 'candidate-install.md', 'release-notes.md'];
+  const names = [filename, 'release-npm.json', 'source-scan.json', 'package-scan.json', 'install.md', 'install-record.json', 'acceptance.md', 'candidate-install.md', 'release-notes.md', ...pluginFiles];
   const files = Object.fromEntries(await Promise.all(names.map(async name => [name, await sha256(path.join(output, name))])));
-  const candidate = { schemaVersion: 3, kind: 'motion-candidate', packageName: guide.packageName, version: guide.version,
+  const candidate = { schemaVersion: hasPlugin ? 4 : 3, kind: 'motion-candidate', packageName: guide.packageName, version: guide.version,
     sourceCommit: guide.commit, tgz: filename, tgzSHA256: files[filename], integrity: integrity(await readFile(path.join(output, filename))), files,
     workflow: { repository, path: candidateWorkflow, ref: workflowRef, sha: env.GITHUB_SHA,
       runId: Number(env.GITHUB_RUN_ID), attempt: Number(env.GITHUB_RUN_ATTEMPT) },
@@ -190,7 +197,7 @@ async function verifyAuthorization(directory, inputs, env = process.env) {
 
 export async function verifyCandidate(directory, expectedSHA256, run) {
   const candidate = await json(path.join(directory, 'candidate.json'));
-  assert([2, 3].includes(candidate.schemaVersion), 'Unsupported candidate schema'); assert.equal(candidate.kind, 'motion-candidate'); assert.equal(candidate.packageName, '@openmotion/app');
+  assert([2, 3, 4].includes(candidate.schemaVersion), 'Unsupported candidate schema'); assert.equal(candidate.kind, 'motion-candidate'); assert.equal(candidate.packageName, '@openmotion/app');
   checkReleaseVersion(candidate.version);
   assert.equal(candidate.tgz, `openmotion-app-${candidate.version}.tgz`); assert.equal(candidate.tgzSHA256, expectedSHA256);
   assert.match(expectedSHA256, hashPattern); assert.match(candidate.sourceCommit, /^[a-f0-9]{40}$/);
@@ -203,8 +210,10 @@ export async function verifyCandidate(directory, expectedSHA256, run) {
   assert.deepEqual(candidate.workflow, { repository: receiptRepository, path: candidateWorkflow, ref, sha: run.head_sha, runId: run.id, attempt: run.run_attempt });
   const names = [candidate.tgz, 'release-npm.json', 'source-scan.json', 'package-scan.json', 'install.md', 'install-record.json', 'acceptance.md', 'candidate-install.md'];
   if (candidate.schemaVersion >= 3) names.push('release-notes.md');
+  if (candidate.schemaVersion >= 4) names.push(...pluginCandidateFiles(candidate.version));
   assert.deepEqual(Object.keys(candidate.files).sort(), names.sort());
   for (const name of names) assert.equal(await sha256(path.join(directory, name)), candidate.files[name], 'Candidate file changed: ' + name);
+  if (candidate.schemaVersion >= 4) await verifyCandidatePlugin(directory, candidate.version, candidate.sourceCommit);
   if (candidate.schemaVersion >= 3) {
     const notes = await readFile(path.join(directory, 'release-notes.md'), 'utf8');
     assert(Buffer.byteLength(notes) <= 1024 * 1024 && notes.includes(candidateNoteIdentity(candidate)), 'Candidate notes identity mismatch');
@@ -255,7 +264,7 @@ export async function downloadCandidate(version, directory, expectedSHA256, fetc
   try {
     const archive = path.join(work, 'candidate.zip'); await writeFile(archive, bytes);
     const entries = (await runFile('unzip', ['-Z1', archive])).trim().split('\n');
-    assert([9, 10].includes(entries.length) && new Set(entries).size === entries.length, 'Unexpected candidate artifact files');
+    assert([9, 10, 13].includes(entries.length) && new Set(entries).size === entries.length, 'Unexpected candidate artifact files');
     assert(entries.every(name => /^[a-zA-Z0-9._-]+$/.test(name) && name.length < 160), 'Unsafe candidate artifact entry');
     await mkdir(directory, { recursive: true });
     for (const name of entries) {
@@ -459,6 +468,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
         await runFile('git', ['worktree', 'add', '--detach', work, c.sourceCommit], { cwd: extra });
         await writeJSON(path.join(directory, 'publication-source-scan.json'), await scanSource(work, final));
         await writeJSON(path.join(directory, 'publication-package-scan.json'), await scanPackage(path.join(directory, c.tgz), final));
+        if (c.schemaVersion >= 4) await writeJSON(path.join(directory, 'publication-dsh-scan.json'), await scanPluginPackage(path.join(directory, pluginCandidateFiles(c.version)[0]), final));
       } finally { await runFile('git', ['worktree', 'remove', '--force', work], { cwd: extra }).catch(() => {}); }
     } else if (command === 'verify') await verifyDownloaded(directory, inputs.expectedSHA256, inputs.version);
     else if (command === 'npm') await publishNpm(directory, inputs);

@@ -6,14 +6,13 @@ import { PlayheadIndicator } from "./PlayheadIndicator";
 import { TimelinePlayheadLayer } from "./TimelinePlayheadLayer";
 import { RULER_H, CLIP_Y, TRACK_H, PLAYHEAD_HEAD_W, getTimelineRowHeight } from "./timelineLayout";
 import { getTimelinePlayheadTransform } from "./timelinePlayheadTransform";
+import { usePlayerStore } from "../store/playerStore";
+import { isTrackRowExpanded } from "./useTimelineTrackLayout";
 import { TimelineLanes } from "./TimelineLanes";
 import { TimelineGestureOverlay } from "./TimelineGestureOverlay";
 import { useTimelineContext } from "./TimelineProvider";
 import { TimelinePendingAssetDrops } from "./TimelinePendingAssetDrops";
 import { TimelineGestureFeedback } from "./TimelineGestureFeedback";
-
-// A dropped clip's length is unknown until it lands; the preview shows a default.
-const DROP_PREVIEW_SECONDS = 3;
 
 export const TimelineCanvas = memo(function TimelineCanvas() {
   const mvp = useMvpEditor();
@@ -39,12 +38,12 @@ export const TimelineCanvas = memo(function TimelineCanvas() {
   const showGhostLane = props.rowGeometry.padding.bottom >= TRACK_H;
   // Past the last committed track: a drag's new bottom-track preview row is the lane itself.
   const ghostLaneRow = props.rowGeometry.getRowIndex(props.trackOrder.at(-1) ?? Number.NaN) + 1;
-  const draggedRowHeight = getTimelineRowHeight(draggedRowIndex, props.rowHeights);
-  // A clip bar in an EXPANDED row still renders at TRACK_H (the property lanes
-  // occupy the rest of the row — see TimelineLanes' clipHeight), so the drag
-  // ghost and drop placeholder must clamp to it or they stretch to the full
-  // expanded row height and stop matching the clip being dragged.
-  const draggedClipHeight = Math.min(draggedRowHeight, TRACK_H) - CLIP_Y * 2;
+  const expandedClipIds = usePlayerStore(s => s.expandedClipIds);
+  const clipHeightAtRow = (row: number) => {
+    const elements = props.tracks.find(([track]) => track === displayTrackOrder[row])?.[1] ?? [];
+    return (isTrackRowExpanded(elements, expandedClipIds) ? TRACK_H : getTimelineRowHeight(row, props.rowHeights)) - CLIP_Y * 2;
+  };
+  const draggedClipHeight = clipHeightAtRow(draggedRowIndex);
   const beatDragging = props.beatDragging;
   const { draggedElement, snapGuide, multiDragPreview } = props;
   return (
@@ -137,7 +136,7 @@ export const TimelineCanvas = memo(function TimelineCanvas() {
               top: props.rowGeometry.getRowTop(rowIndex) + CLIP_Y,
               left: props.contentOrigin + gap.start * props.pps,
               width: Math.max((gap.end - gap.start) * props.pps, 2),
-              height: TRACK_H - CLIP_Y * 2,
+              height: clipHeightAtRow(rowIndex),
               background: loud ? "var(--timeline-accent-soft)" : "var(--timeline-accent-faint)",
               borderRadius: 4,
               zIndex: 25,
@@ -162,8 +161,7 @@ export const TimelineCanvas = memo(function TimelineCanvas() {
         />
       )}
 
-      {/* Drop preview: where an asset or file dragged in from outside will land
-          (a row past the last lane means a new track). */}
+      {/* Pointer marker until the external media length is available. */}
       {props.dropPreview && props.dropPreview.insertRow == null && (
         <div
           aria-hidden="true"
@@ -172,8 +170,8 @@ export const TimelineCanvas = memo(function TimelineCanvas() {
           style={{
             top: props.rowGeometry.getRowTop(dropRowIndex) + CLIP_Y,
             left: props.contentOrigin + props.dropPreview.start * props.pps,
-            width: DROP_PREVIEW_SECONDS * props.pps,
-            height: TRACK_H - CLIP_Y * 2,
+            width: 2,
+            height: clipHeightAtRow(dropRowIndex),
             border: "1px solid color-mix(in srgb, var(--timeline-accent) 55%, transparent)",
             background: "color-mix(in srgb, var(--timeline-accent) 12%, transparent)",
             borderRadius: 4,
@@ -282,7 +280,7 @@ export const TimelineCanvas = memo(function TimelineCanvas() {
       {/* Playhead — hidden while dragging a beat so its guideline doesn't
           track the scrub and clutter the beat being moved. Explicit width +
           the half-head offset baked into getTimelinePlayheadTransform keep the
-          inner 1px line's CENTER exactly on contentOrigin + t * pps (the ruler
+          inner 2px line's CENTER exactly on contentOrigin + t * pps (the ruler
           ticks' center), instead of relying on shrink-wrap sizing. */}
       <TimelinePlayheadLayer scrollRef={props.scrollRef} contentOrigin={props.contentOrigin}>
         <div
@@ -296,7 +294,10 @@ export const TimelineCanvas = memo(function TimelineCanvas() {
             display: beatDragging ? "none" : undefined,
           }}
         >
-          <PlayheadIndicator scrubbing={props.isScrubbing} />
+          <PlayheadIndicator
+            scrubbing={props.isScrubbing}
+            headBackground={mvp ? "var(--timeline-ruler-bg)" : props.theme.shellBackground}
+          />
         </div>
       </TimelinePlayheadLayer>
     </div>

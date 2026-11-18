@@ -93,7 +93,7 @@ export function TimelineToolPicker({ showSelectAroundPlayhead = true, splitShort
         <button
           type="button"
           aria-label={t("Timeline tool: {value0}", { value0: t(current.label) })}
-          className={cn(flatIdle, "gap-0.5")}
+          className={cn(flatIdle, "motion-timeline-tool-picker gap-0.5")}
         >
           {current.icon}
           <CaretDown size={10} weight="bold" aria-hidden="true" />
